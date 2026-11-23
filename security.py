@@ -248,19 +248,18 @@ def rotate_session(request: Request) -> None:
 def client_ip(request: Request) -> str:
     """IP для admin allowlist, rate limit и lockout.
 
-    X-Forwarded-For учитывается только если TRUST_PROXY=1 и непосредственный
-    peer (request.client.host) входит в TRUSTED_PROXY_IPS.
+    Заголовки клиента (X-Forwarded-For / X-Real-IP) читаются только если
+    TRUST_PROXY=1 и непосредственный peer входит в TRUSTED_PROXY_IPS.
 
-    Берём **правый** (ближайший к нам) адрес, который не является доверенным
-    прокси: так клиент не может подставить allowlist-IP слева в заголовке.
-    Цепочка ``spoof, real-client`` при одном trusted hop → ``real-client``.
+    Для X-Forwarded-For берём **правый** адрес вне списка прокси — иначе
+    клиент мог бы подставить allowlist-IP слева в заголовке.
     """
     direct = request.client.host if request.client and request.client.host else None
     if trust_proxy_headers():
         peers = trusted_proxy_peers()
         if not peers:
             logger.warning(
-                "TRUST_PROXY=1 без TRUSTED_PROXY_IPS — X-Forwarded-For игнорируется"
+                "TRUST_PROXY=1 без TRUSTED_PROXY_IPS — proxy-заголовки игнорируются"
             )
         elif direct and direct in peers:
             forwarded = request.headers.get("x-forwarded-for") or ""
@@ -269,11 +268,13 @@ def client_ip(request: Request) -> str:
                 cand = part.strip()
                 if cand and _IP_LIKE.match(cand):
                     candidates.append(cand)
-            # Справа налево: пропускаем hop'ы из TRUSTED_PROXY_IPS.
             for cand in reversed(candidates):
                 if cand not in peers:
                     return cand
-            # Все hop'ы — доверенные прокси; fallback на peer.
+            # Caddy/nginx часто ставят один hop в X-Real-IP.
+            real_ip = (request.headers.get("x-real-ip") or "").strip()
+            if real_ip and _IP_LIKE.match(real_ip) and real_ip not in peers:
+                return real_ip
     return direct or "unknown"
 
 
