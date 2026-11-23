@@ -1,0 +1,44 @@
+{% extends "admin/base.html" %}
+{% block title %}{% if link %}Ссылка{% else %}Новая ссылка{% endif %}{% endblock %}
+{% block content %}
+<section class="admin-card">
+  <h1>{% if link %}Редактирование ссылки{% else %}Новая ссылка{% endif %}</h1>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <form method="post" action="{% if link %}/admin/links/{{ link.id }}{% else %}/admin/links/new{% endif %}" class="admin-form">
+    {% include "admin/_csrf.html" %}
+    <label class="field">
+      <span>Название</span>
+      <input type="text" name="label" value="{{ form.label }}" required>
+    </label>
+    <label class="field">
+      <span>URL (только путь /… или https://…)</span>
+      <input type="text" name="href" value="{{ form.href }}" required>
+    </label>
+    <label class="field">
+      <span>Место</span>
+      <select name="location">
+        <option value="header" {% if form.location == 'header' %}selected{% endif %}>Шапка</option>
+        <option value="footer" {% if form.location == 'footer' %}selected{% endif %}>Подвал</option>
+      </select>
+    </label>
+    <label class="field">
+      <span>Порядок</span>
+      <input type="number" name="sort_order" value="{{ form.sort_order }}">
+    </label>
+    <label class="check">
+      <input type="checkbox" name="is_visible" {% if form.is_visible %}checked{% endif %}>
+      <span>Показывать</span>
+    </label>
+    <div class="admin-actions">
+      <button class="btn-primary" type="submit">Сохранить</button>
+      <a class="btn-secondary" href="/admin/links">К списку</a>
+    </div>
+  </form>
+  {% if link %}
+  <form method="post" action="/admin/links/{{ link.id }}/delete" class="admin-danger" onsubmit="return confirm('Удалить ссылку?');">
+    {% include "admin/_csrf.html" %}
+    <button type="submit" class="btn-danger">Удалить</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

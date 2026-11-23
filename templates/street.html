@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  {% if not not_found %}
+  <nav class="breadcrumbs" aria-label="Хлебные крошки">
+    <a href="/">Главная</a>
+    <span aria-hidden="true">/</span>
+    <a href="/catalog">Каталог</a>
+    <span aria-hidden="true">/</span>
+    <a href="/catalog/{{ (street_alpha or 'А')|urlencode }}">{{ street_alpha or 'А' }}</a>
+    <span aria-hidden="true">/</span>
+    <span>{{ street_display or street }}</span>
+  </nav>
+  {% else %}
+  <a class="back" href="/catalog/{{ (street_alpha or 'А')|urlencode }}">← К списку улиц</a>
+  {% endif %}
+  {% if not_found %}
+  <h1>Улица не найдена</h1>
+  {% else %}
+  <h1>{{ page_title }}</h1>
+  <p class="section-lead">Зарегистрированные сделки с жильём на {{ street_display }} в Санкт-Петербурге по данным Росреестра.</p>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <form class="period-bar" action="/street/{{ street|urlencode }}" method="get" data-period-guard>
+    <label class="field">
+      <span>Период с</span>
+      <select name="period_from" id="period-from">
+        <option value="">Все</option>
+        {% for q in quarters %}
+        <option value="{{ q.value }}" {% if period_from == q.value %}selected{% endif %}>{{ q.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>по</span>
+      <select name="period_to" id="period-to">
+        <option value="">Все</option>
+        {% for q in quarters %}
+        <option value="{{ q.value }}" {% if period_to == q.value %}selected{% endif %}>{{ q.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn-secondary" type="submit">Обновить</button>
+  </form>
+  {% with hide_street_col=true %}
+  {% include "_deals_table.html" %}
+  {% endwith %}
+  {% endif %}
+</section>
+{% endblock %}

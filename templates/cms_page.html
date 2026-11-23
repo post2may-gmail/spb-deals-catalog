@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head prose-page">
+  <nav class="breadcrumbs" aria-label="Хлебные крошки">
+    <a href="/">Главная</a>
+    <span aria-hidden="true">/</span>
+    <span>{{ page.title }}</span>
+  </nav>
+  <h1>{{ page.title }}</h1>
+  <div class="prose">
+    {{ page.body | safe }}
+  </div>
+</section>
+{% endblock %}

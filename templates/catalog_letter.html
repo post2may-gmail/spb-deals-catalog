@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <nav class="breadcrumbs" aria-label="Хлебные крошки">
+    <a href="/">Главная</a>
+    <span aria-hidden="true">/</span>
+    <a href="/catalog">Каталог</a>
+    <span aria-hidden="true">/</span>
+    <span>Буква «{{ letter }}»</span>
+  </nav>
+  <h1>Улицы на «{{ letter }}»</h1>
+  <p class="section-lead">{{ streets|length }} улиц Санкт-Петербурга с зарегистрированными сделками Росреестра.</p>
+  {% if streets %}
+  <ul class="street-list animated">
+    {% for s in streets %}
+    <li>
+      <a href="/street/{{ s.street|urlencode }}">{{ s.title or (s.street|street_title) }}</a>
+      <span class="muted">{{ s.deals_count }} сделок</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty">На эту букву улиц пока нет.</p>
+  {% endif %}
+</section>
+{% endblock %}

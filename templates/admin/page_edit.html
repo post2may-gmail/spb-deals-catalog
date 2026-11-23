@@ -1,0 +1,49 @@
+{% extends "admin/base.html" %}
+{% block title %}{% if page %}Редактирование{% else %}Новая страница{% endif %}{% endblock %}
+{% block content %}
+<section class="admin-card">
+  <h1>{% if page %}{{ form.title or 'Страница' }}{% else %}Новая страница{% endif %}</h1>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  <form method="post" action="{% if page %}/admin/pages/{{ page.id }}{% else %}/admin/pages/new{% endif %}" class="admin-form">
+    {% include "admin/_csrf.html" %}
+    <label class="field">
+      <span>Заголовок</span>
+      <input type="text" name="title" value="{{ form.title }}" required>
+    </label>
+    <label class="field">
+      <span>Адрес (slug) — страница будет на /p/slug</span>
+      <input type="text" name="slug" value="{{ form.slug }}" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="about">
+    </label>
+    <label class="field">
+      <span>Meta description</span>
+      <input type="text" name="meta_description" value="{{ form.meta_description }}">
+    </label>
+    <label class="field">
+      <span>Текст (безопасный HTML: p, h2–h4, ul/ol, a, strong/em)</span>
+      <textarea name="body" rows="14">{{ form.body }}</textarea>
+    </label>
+    <label class="field">
+      <span>Порядок сортировки</span>
+      <input type="number" name="sort_order" value="{{ form.sort_order }}">
+    </label>
+    <label class="check">
+      <input type="checkbox" name="is_published" {% if form.is_published %}checked{% endif %}>
+      <span>Опубликована</span>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="show_in_nav" {% if form.show_in_nav %}checked{% endif %}>
+      <span>Показывать в меню шапки</span>
+    </label>
+    <div class="admin-actions">
+      <button class="btn-primary" type="submit">Сохранить</button>
+      <a class="btn-secondary" href="/admin/pages">К списку</a>
+    </div>
+  </form>
+  {% if page %}
+  <form method="post" action="/admin/pages/{{ page.id }}/delete" class="admin-danger" onsubmit="return confirm('Удалить страницу?');">
+    {% include "admin/_csrf.html" %}
+    <button type="submit" class="btn-danger">Удалить страницу</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

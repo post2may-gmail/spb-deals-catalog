@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <p class="hero-kicker">{{ texts.hero_kicker if texts else "Росреестр · Санкт-Петербург" }}</p>
+  <h1 class="hero-brand">{{ brand }}</h1>
+  <p class="hero-lead">{{ texts.hero_lead if texts else "Квартиры, комнаты и доли — по улицам города, по данным Росреестра." }}</p>
+
+  <form class="search-panel" action="/search" method="get" autocomplete="off" data-period-guard>
+    <label class="field grow">
+      <span>Улица</span>
+      <input type="search" name="street" id="street-input" placeholder="{{ texts.search_placeholder if texts else 'Например, Невский' }}" required list="street-suggest" value="">
+      <datalist id="street-suggest"></datalist>
+    </label>
+    <label class="field">
+      <span>Период с</span>
+      <select name="period_from" id="period-from">
+        <option value="">Все кварталы</option>
+        {% for q in quarters %}
+        <option value="{{ q.value }}">{{ q.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <label class="field">
+      <span>по</span>
+      <select name="period_to" id="period-to">
+        <option value="">Все кварталы</option>
+        {% for q in quarters %}
+        <option value="{{ q.value }}">{{ q.label }}</option>
+        {% endfor %}
+      </select>
+    </label>
+    <button class="btn-primary" type="submit">Показать сделки</button>
+  </form>
+  {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
+  {% if quarters %}
+  <p class="section-lead section-lead--tight">В базе кварталы с {{ quarters[0].label }} по {{ quarters[-1].label }}.</p>
+  {% endif %}
+</section>
+
+<section class="alpha-section">
+  <h2>{{ texts.catalog_section_title if texts else "Каталог по алфавиту" }}</h2>
+  <p class="section-lead">{{ texts.catalog_section_lead if texts else "Выберите букву — откроется список улиц, затем таблица сделок." }}</p>
+  <div class="alpha-grid" role="navigation" aria-label="Алфавит улиц">
+    {% for item in letters %}
+    <a class="alpha-cell" href="/catalog/{{ item.letter|urlencode }}">
+      <span class="alpha-letter">{{ item.letter }}</span>
+      <span class="alpha-meta">{{ item.streets_count }}</span>
+    </a>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

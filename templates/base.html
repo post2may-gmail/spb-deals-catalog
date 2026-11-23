@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ meta_title or brand }}{% endblock %}</title>
+  <meta name="description" content="{% block meta_description %}{{ meta_description or default_description }}{% endblock %}">
+  <meta name="robots" content="{% block robots %}{{ robots or 'index,follow,max-image-preview:large' }}{% endblock %}">
+  <meta name="googlebot" content="{% block googlebot %}{{ robots or 'index,follow,max-image-preview:large' }}{% endblock %}">
+  <meta name="yandex" content="{% block yandex_robots %}{{ 'index,follow' if (robots or 'index').startswith('index') else 'noindex,nofollow' }}{% endblock %}">
+  <meta name="author" content="Каталог сделок по данным Росреестра">
+  <meta name="geo.region" content="RU-SPE">
+  <meta name="geo.placename" content="Санкт-Петербург">
+  <meta name="language" content="Russian">
+  <link rel="canonical" href="{% block canonical %}{{ canonical_url }}{% endblock %}">
+  <link rel="alternate" hreflang="ru" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="x-default" href="{{ canonical_url }}">
+
+  <meta property="og:locale" content="ru_RU">
+  <meta property="og:type" content="{% block og_type %}{{ og_type or 'website' }}{% endblock %}">
+  <meta property="og:site_name" content="{{ brand }}">
+  <meta property="og:title" content="{% block og_title %}{{ meta_title or brand }}{% endblock %}">
+  <meta property="og:description" content="{% block og_description %}{{ meta_description or default_description }}{% endblock %}">
+  <meta property="og:url" content="{{ canonical_url }}">
+  {% if og_image %}
+  <meta property="og:image" content="{{ og_image }}">
+  {% endif %}
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="{{ meta_title or brand }}">
+  <meta name="twitter:description" content="{{ meta_description or default_description }}">
+
+  {% if google_site_verification %}
+  <meta name="google-site-verification" content="{{ google_site_verification }}">
+  {% endif %}
+  {% if yandex_verification %}
+  <meta name="yandex-verification" content="{{ yandex_verification }}">
+  {% endif %}
+
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/styles.css">
+  {% if json_ld %}
+  <script type="application/ld+json">{{ json_ld | safe }}</script>
+  {% endif %}
+  {% if json_ld_extra %}
+  <script type="application/ld+json">{{ json_ld_extra | safe }}</script>
+  {% endif %}
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <div class="atmosphere" aria-hidden="true"></div>
+  <header class="site-header">
+    <a class="brand" href="/" title="{{ brand }}">{{ brand }}</a>
+    <nav class="nav" aria-label="Основная навигация">
+      {% for item in nav_items %}
+      <a href="{{ item.href }}">{{ item.label }}</a>
+      {% else %}
+      <a href="/">Поиск</a>
+      <a href="/catalog">Каталог улиц</a>
+      {% endfor %}
+    </nav>
+  </header>
+  <main class="main" id="main">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    {% if footer_links %}
+    <nav class="footer-nav" aria-label="Ссылки в подвале">
+      {% for item in footer_links %}
+      <a href="{{ item.href }}">{{ item.label }}</a>
+      {% endfor %}
+    </nav>
+    {% endif %}
+    <p class="muted">{{ stats.deals|default(0) }} сделок · {{ stats.streets|default(0) }} улиц{% if texts and texts.footer_note %} · {{ texts.footer_note }}{% endif %}</p>
+  </footer>
+  <script src="/static/app.js" defer></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

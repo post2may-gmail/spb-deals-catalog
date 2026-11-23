@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <title>{% block title %}Админка{% endblock %} — Сделки СПб</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <link rel="stylesheet" href="/static/admin.css">
+</head>
+<body class="admin-body">
+  <header class="admin-header">
+    <a class="admin-brand" href="/admin">Админка</a>
+    {% if authed %}
+    <nav class="admin-nav">
+      <a href="/admin" class="{% if admin_section == 'home' %}is-active{% endif %}">Обзор</a>
+      <a href="/admin/texts" class="{% if admin_section == 'texts' %}is-active{% endif %}">Тексты</a>
+      <a href="/admin/pages" class="{% if admin_section == 'pages' %}is-active{% endif %}">Страницы</a>
+      <a href="/admin/links" class="{% if admin_section == 'links' %}is-active{% endif %}">Ссылки</a>
+      <a href="/" target="_blank" rel="noopener">Сайт ↗</a>
+      <form action="/admin/logout" method="post" class="inline">
+        {% include "admin/_csrf.html" %}
+        <button type="submit" class="linkish">Выйти</button>
+      </form>
+    </nav>
+    {% endif %}
+  </header>
+  <main class="admin-main">
+    {% if flash %}<p class="admin-flash">{{ flash }}</p>{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

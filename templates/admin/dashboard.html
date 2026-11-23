@@ -1,0 +1,22 @@
+{% extends "admin/base.html" %}
+{% block title %}Обзор{% endblock %}
+{% block content %}
+<section class="admin-card">
+  <h1>Управление сайтом</h1>
+  <p class="muted">Редактируйте тексты главной, добавляйте страницы и ссылки в меню.</p>
+  <div class="admin-grid">
+    <a class="admin-tile" href="/admin/texts">
+      <strong>Тексты</strong>
+      <span>Название, описания, подписи на главной</span>
+    </a>
+    <a class="admin-tile" href="/admin/pages">
+      <strong>Страницы</strong>
+      <span>{{ pages_count }} шт. — «О проекте», контакты и т.п.</span>
+    </a>
+    <a class="admin-tile" href="/admin/links">
+      <strong>Ссылки меню</strong>
+      <span>{{ links_count }} шт. в шапке/подвале</span>
+    </a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,37 @@
+{% extends "admin/base.html" %}
+{% block title %}Ссылки{% endblock %}
+{% block content %}
+<section class="admin-card">
+  <div class="admin-row">
+    <h1>Ссылки меню</h1>
+    <a class="btn-primary" href="/admin/links/new">Новая ссылка</a>
+  </div>
+  <p class="muted">Ссылки в шапке и подвале. Страницы с галочкой «в меню» добавляются автоматически.</p>
+  {% if links %}
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Название</th>
+        <th>URL</th>
+        <th>Место</th>
+        <th>Порядок</th>
+        <th>Вид</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for l in links %}
+      <tr>
+        <td><a href="/admin/links/{{ l.id }}">{{ l.label }}</a></td>
+        <td><code>{{ l.href }}</code></td>
+        <td>{{ l.location }}</td>
+        <td>{{ l.sort_order }}</td>
+        <td>{% if l.is_visible %}видна{% else %}скрыта{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Ссылок пока нет.</p>
+  {% endif %}
+</section>
+{% endblock %}

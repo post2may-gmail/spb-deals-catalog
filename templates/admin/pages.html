@@ -1,0 +1,39 @@
+{% extends "admin/base.html" %}
+{% block title %}Страницы{% endblock %}
+{% block content %}
+<section class="admin-card">
+  <div class="admin-row">
+    <h1>Страницы</h1>
+    <a class="btn-primary" href="/admin/pages/new">Новая страница</a>
+  </div>
+  {% if pages %}
+  <table class="admin-table">
+    <thead>
+      <tr>
+        <th>Заголовок</th>
+        <th>Адрес</th>
+        <th>Статус</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pages %}
+      <tr>
+        <td><a href="/admin/pages/{{ p.id }}">{{ p.title }}</a></td>
+        <td><code>/p/{{ p.slug }}</code></td>
+        <td>
+          {% if p.is_published %}опубликована{% else %}черновик{% endif %}
+          {% if p.show_in_nav %} · в меню{% endif %}
+        </td>
+        <td class="num">
+          <a href="/p/{{ p.slug }}" target="_blank" rel="noopener">открыть</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p class="muted">Пока нет страниц. Создайте первую — например «О проекте».</p>
+  {% endif %}
+</section>
+{% endblock %}

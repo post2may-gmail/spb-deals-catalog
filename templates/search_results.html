@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="page-head">
+  <a class="back" href="/">← К поиску</a>
+  {% if not_found %}
+  <h1>Улица не найдена</h1>
+  <p class="section-lead">По запросу «{{ query }}» совпадений нет. Попробуйте другую формулировку или каталог.</p>
+  {% if suggestions %}
+  <ul class="street-list">
+    {% for s in suggestions %}
+    <li>
+      <a href="/street/{{ s.street|urlencode }}">{{ s.street|street_title }}</a>
+      <span class="muted">{{ s.deals_count }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+  {% else %}
+  <h1>{{ page_title }}</h1>
+  <p class="section-lead">
+    {% if period_from_label or period_to_label %}
+      Период:
+      {{ period_from_label or "начало" }} — {{ period_to_label or "конец" }}.
+    {% else %}
+      Все доступные кварталы.
+    {% endif %}
+  </p>
+  {% include "_deals_table.html" %}
+  {% endif %}
+</section>
+{% endblock %}

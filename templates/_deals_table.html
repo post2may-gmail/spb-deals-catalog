@@ -1,0 +1,51 @@
+{% if deals %}
+{% set show_street = not hide_street_col %}
+<div class="table-wrap">
+  <table class="deals-table {% if not show_street %}deals-table--street{% endif %}">
+    <colgroup>
+      <col class="col-period">
+      {% if show_street %}<col class="col-street">{% endif %}
+      <col class="col-area">
+      <col class="col-price">
+      <col class="col-m2">
+      <col class="col-material">
+      <col class="col-year">
+      <col class="col-floor">
+    </colgroup>
+    <thead>
+      <tr>
+        <th>Квартал</th>
+        {% if show_street %}<th>Улица</th>{% endif %}
+        <th>Площадь</th>
+        <th>Цена сделки</th>
+        <th>₽/м²</th>
+        <th>Материал дома</th>
+        <th>Год постройки</th>
+        <th>Этаж</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in deals %}
+      <tr>
+        <td class="cell-nowrap">{{ d.quarter }}&nbsp;кв.&nbsp;{{ d.year }}</td>
+        {% if show_street %}
+        <td class="cell-clip" title="{{ d.street|street_title }}">{{ d.street|street_title }}</td>
+        {% endif %}
+        <td class="cell-nowrap num">{{ d.area|area }}</td>
+        <td class="cell-nowrap num">{{ d.deal_price|money }}</td>
+        <td class="cell-nowrap num">{{ d.price_m2|money }}</td>
+        <td class="cell-material" title="{{ d.wall_material|materials_full }}">{{ d.wall_material|materials }}</td>
+        <td class="cell-nowrap">{{ d.year_build or "—" }}</td>
+        <td class="cell-clip" title="{{ d.floor or '' }}">{{ d.floor or "—" }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+<p class="table-note">
+  Показано {{ deals|length }} сделок{% if deals_truncated %} (не более {{ deals_limit|default(500) }} на страницу — уточните период){% endif %}.
+  Источник — открытые данные Росреестра о ценах регистрируемых сделок.
+</p>
+{% else %}
+<p class="empty">По выбранным условиям сделок не найдено.</p>
+{% endif %}
