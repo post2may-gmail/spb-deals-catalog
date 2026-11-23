@@ -88,8 +88,17 @@ def require_admin_password() -> str | None:
     return value or None
 
 
+_ephemeral_session_secret: str | None = None
+
+
 def require_session_secret() -> str:
-    """Секрет сессии только из окружения — без ephemeral fallback."""
+    """Секрет cookie-сессии админки.
+
+    Предпочтительно ADMIN_SESSION_SECRET / SESSION_SECRET из окружения.
+    Если не задан — одноразовый секрет на процесс (каталог поднимается,
+    админ-сессии не переживают рестарт). На проде задайте постоянный секрет.
+    """
+    global _ephemeral_session_secret
     value = (
         os.getenv("ADMIN_SESSION_SECRET")
         or os.getenv("SESSION_SECRET")
@@ -97,9 +106,13 @@ def require_session_secret() -> str:
     ).strip()
     if value:
         return value
-    raise RuntimeError(
-        "Задайте ADMIN_SESSION_SECRET (или SESSION_SECRET) перед запуском."
-    )
+    if _ephemeral_session_secret is None:
+        _ephemeral_session_secret = secrets.token_urlsafe(48)
+        logger.warning(
+            "ADMIN_SESSION_SECRET не задан — используется временный секрет процесса. "
+            "Задайте ADMIN_SESSION_SECRET в env для стабильной админки."
+        )
+    return _ephemeral_session_secret
 
 
 def sessions_https_only() -> bool:
