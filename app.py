@@ -205,6 +205,8 @@ def create_app() -> FastAPI:
     app.add_middleware(SecurityHeadersMiddleware)
     app.add_middleware(HeavyRequestLimitMiddleware, max_calls=90, window_sec=60.0)
     app.add_middleware(BlockPrivatePathsMiddleware)
+    STATIC_DIR.mkdir(parents=True, exist_ok=True)
+    (BASE_DIR / "templates").mkdir(parents=True, exist_ok=True)
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
     app.include_router(build_admin_router(TEMPLATES))
 

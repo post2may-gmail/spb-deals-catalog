@@ -6,20 +6,28 @@ import traceback
 
 logger = logging.getLogger("spb-deals.boot")
 
+_BOOT_ERROR = ""
+
 try:
     from app import create_app
 
     app = create_app()
-except Exception:  # noqa: BLE001 — не молчаливый 500 платформы
-    # Traceback только в логи процесса — никогда в HTTP-ответ.
+except Exception as exc:  # noqa: BLE001 — не молчаливый 500 платформы
+    # Traceback только в логи; в HTTP — короткая безопасная причина для отладки хостинга.
     logger.error("application boot failed:\n%s", traceback.format_exc())
+    msg = f"{type(exc).__name__}: {exc}".replace("\n", " ").strip()
+    if len(msg) > 240:
+        msg = msg[:237] + "..."
+    _BOOT_ERROR = msg
 
     async def app(scope, receive, send):  # type: ignore[no-redef]
         if scope["type"] != "http":
             return
+        detail = _BOOT_ERROR or "unknown"
         body = (
             b"Service temporarily unavailable. "
-            b"Application failed to start."
+            b"Application failed to start. "
+            + detail.encode("utf-8", errors="replace")
         )
         await send(
             {
