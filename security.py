@@ -65,13 +65,16 @@ _IP_LIKE = re.compile(
     r")$"
 )
 
+# Яндекс.Метрика: inline-счётчик + tag.js, пиксель, XHR/beacon, webvisor (blob/frame).
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self'; "
+    "script-src 'self' 'unsafe-inline' https://mc.yandex.ru https://mc.yandex.com; "
     "style-src 'self' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data:; "
-    "connect-src 'self'; "
+    "img-src 'self' data: https://mc.yandex.ru https://mc.yandex.com; "
+    "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com; "
+    "child-src blob: https://mc.yandex.ru https://mc.yandex.com; "
+    "frame-src blob: https://mc.yandex.ru https://mc.yandex.com; "
     "frame-ancestors 'none'; "
     "base-uri 'self'; "
     "form-action 'self'"
