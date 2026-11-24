@@ -175,6 +175,11 @@ def trusted_proxy_peers() -> set[str]:
             logger.warning("TRUSTED_PROXY_IPS: CIDR не поддерживается, пропуск %r", item)
             continue
         peers.add(item)
+    # Caddy/Timeweb часто ходит на uvicorn как 127.0.0.1 или ::1.
+    if "127.0.0.1" in peers:
+        peers.add("::1")
+    if "::1" in peers:
+        peers.add("127.0.0.1")
     return peers
 
 
@@ -256,19 +261,19 @@ def rotate_session(request: Request) -> None:
 def client_ip(request: Request) -> str:
     """IP для admin allowlist, rate limit и lockout.
 
-    X-Forwarded-For учитывается только если TRUST_PROXY=1 и непосредственный
-    peer (request.client.host) входит в TRUSTED_PROXY_IPS.
+    X-Forwarded-For / X-Real-IP учитываются только если TRUST_PROXY=1 и
+    непосредственный peer (request.client.host) входит в TRUSTED_PROXY_IPS.
 
-    Берём **правый** (ближайший к нам) адрес, который не является доверенным
-    прокси: так клиент не может подставить allowlist-IP слева в заголовке.
-    Цепочка ``spoof, real-client`` при одном trusted hop → ``real-client``.
+    Берём **правый** (ближайший к нам) адрес из XFF, который не является
+    доверенным прокси: так клиент не может подставить allowlist-IP слева.
+    Если XFF пуст — берём X-Real-IP (Caddy/Timeweb часто ставит только его).
     """
     direct = request.client.host if request.client and request.client.host else None
     if trust_proxy_headers():
         peers = trusted_proxy_peers()
         if not peers:
             logger.warning(
-                "TRUST_PROXY=1 без TRUSTED_PROXY_IPS — X-Forwarded-For игнорируется"
+                "TRUST_PROXY=1 без TRUSTED_PROXY_IPS — proxy-заголовки игнорируются"
             )
         elif direct and direct in peers:
             forwarded = request.headers.get("x-forwarded-for") or ""
@@ -281,6 +286,9 @@ def client_ip(request: Request) -> str:
             for cand in reversed(candidates):
                 if cand not in peers:
                     return cand
+            real_ip = (request.headers.get("x-real-ip") or "").strip()
+            if real_ip and _IP_LIKE.match(real_ip) and real_ip not in peers:
+                return real_ip
             # Все hop'ы — доверенные прокси; fallback на peer.
     return direct or "unknown"
 

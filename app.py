@@ -277,6 +277,29 @@ def create_app() -> FastAPI:
         # Маркер успешного деплоя правок под Яндекс.Метрику (frame-ancestors).
         return {"ok": True, "metrika_framing": True, "build": "metrika-csp-v3"}
 
+    @app.get("/__whoami")
+    async def whoami(request: Request, token: str = "") -> dict[str, Any]:
+        """Показывает IP, который видит приложение (для настройки ADMIN_ALLOWED_IPS).
+
+        Включается только при заданном ADMIN_DEBUG_TOKEN:
+        /__whoami?token=...
+        После настройки админки переменную удалите.
+        """
+        expected = (os.getenv("ADMIN_DEBUG_TOKEN") or "").strip()
+        if not expected or not token or token != expected:
+            return JSONResponse({"detail": "Not Found"}, status_code=404)
+        from security import client_ip, trust_proxy_headers, trusted_proxy_peers
+
+        direct = request.client.host if request.client else None
+        return {
+            "client_ip": client_ip(request),
+            "direct_peer": direct,
+            "trust_proxy": trust_proxy_headers(),
+            "trusted_peers": sorted(trusted_proxy_peers()),
+            "x_forwarded_for": request.headers.get("x-forwarded-for"),
+            "x_real_ip": request.headers.get("x-real-ip"),
+        }
+
     @app.get("/", response_class=HTMLResponse)
     async def home(request: Request) -> HTMLResponse:
         stats = repo().stats()

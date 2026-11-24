@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Form, Request
@@ -22,6 +23,8 @@ from security import (
     rotate_session,
     validate_csrf,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _authed(request: Request) -> bool:
@@ -59,6 +62,14 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         ip = client_ip(request)
         if admin_access_allowed(ip, request):
             return None
+        direct = request.client.host if request.client else None
+        logger.warning(
+            "admin 404: client_ip=%s direct=%s xff=%r xri=%r",
+            ip,
+            direct,
+            request.headers.get("x-forwarded-for"),
+            request.headers.get("x-real-ip"),
+        )
         return HTMLResponse("Not Found", status_code=404)
 
     def require_admin(request: Request) -> HTMLResponse | RedirectResponse | None:
