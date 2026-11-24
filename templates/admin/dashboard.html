@@ -4,11 +4,39 @@
 <section class="admin-card">
   <h1>Управление сайтом</h1>
   <p class="muted">Редактируйте тексты главной, добавляйте страницы и ссылки в меню.</p>
-  {% if cms_storage and cms_storage.s3 %}
-  <p class="admin-flash">CMS сохраняется в Timeweb S3 — страницы переживут редеплой.</p>
-  {% elif cms_storage and cms_storage.ephemeral %}
-  <p class="form-error">База CMS в <code>{{ cms_storage.path }}</code> (пропадёт при редеплое). У Apps нет постоянного диска: создайте бакет в <a href="https://timeweb.cloud/my/storage" target="_blank" rel="noopener">Хранилище S3</a> и задайте переменные <code>CMS_S3_BUCKET</code>, <code>CMS_S3_ACCESS_KEY</code>, <code>CMS_S3_SECRET_KEY</code>.</p>
+  {% set s3 = cms_storage.s3_info if cms_storage else none %}
+  {% if s3 and s3.configured %}
+  <p class="admin-flash">S3 настроен: бакет <code>{{ s3.bucket }}</code>, файл <code>{{ s3.object_key }}</code> ({{ s3.endpoint }}).</p>
+  {% else %}
+  <p class="form-error">
+    Страницы пропадут при редеплое, пока не настроен S3.
+    {% if s3 and s3.missing %}Не заданы: {% for m in s3.missing %}<code>{{ m }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.{% endif %}
+    Создайте бакет в <a href="https://timeweb.cloud/my/storage" target="_blank" rel="noopener">Хранилище S3</a>
+    и в Variables приложения задайте <code>CMS_S3_BUCKET</code>, <code>CMS_S3_ACCESS_KEY</code>, <code>CMS_S3_SECRET_KEY</code>
+    (endpoint по умолчанию <code>https://s3.twcstorage.ru</code>, region <code>ru-1</code>).
+  </p>
   {% endif %}
+
+  <div class="admin-actions" style="flex-wrap:wrap; gap:0.6rem; margin:1rem 0;">
+    <form method="post" action="{{ admin_base }}/cms/s3-check" style="display:inline">
+      {% include "admin/_csrf.html" %}
+      <button type="submit" class="btn-secondary">Проверить S3</button>
+    </form>
+    <form method="post" action="{{ admin_base }}/cms/s3-sync" style="display:inline">
+      {% include "admin/_csrf.html" %}
+      <button type="submit" class="btn-secondary">Залить CMS в S3</button>
+    </form>
+    <a class="btn-secondary" href="{{ admin_base }}/cms/backup">Скачать cms.db</a>
+  </div>
+  <form method="post" action="{{ admin_base }}/cms/restore" enctype="multipart/form-data" class="admin-form" style="margin-bottom:1.2rem;">
+    {% include "admin/_csrf.html" %}
+    <label class="field">
+      <span>Восстановить из cms.db</span>
+      <input type="file" name="backup" accept=".db,application/octet-stream" required>
+    </label>
+    <button type="submit" class="btn-primary">Загрузить бэкап</button>
+  </form>
+
   <div class="admin-grid">
     <a class="admin-tile" href="{{ admin_base }}/texts">
       <strong>Тексты</strong>

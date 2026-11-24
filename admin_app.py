@@ -5,9 +5,9 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Form, Request
+from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi import status as http_status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from fastapi.templating import Jinja2Templates
 
 import cms
@@ -58,6 +58,13 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
 
     def flash(request: Request, message: str) -> None:
         request.session["flash"] = message
+
+    def flash_cms_persist(request: Request, prefix: str) -> None:
+        ok, msg = cms.sync_cms_to_s3()
+        if ok:
+            flash(request, f"{prefix} {msg}")
+        else:
+            flash(request, f"{prefix} ВНИМАНИЕ: {msg}")
 
     def reject_csrf() -> HTMLResponse:
         return HTMLResponse("Недействительный CSRF-токен", status_code=403)
@@ -212,7 +219,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         form = await request.form()
         values = {f["key"]: str(form.get(f["key"], "")) for f in cms.TEXT_FIELDS}
         cms.save_texts(values)
-        flash(request, "Тексты сохранены")
+        flash_cms_persist(request, "Тексты сохранены.")
         return RedirectResponse(admin_href("/texts"), status_code=303)
 
     @router.get("/pages", response_class=HTMLResponse)
@@ -299,9 +306,9 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
                 ),
                 status_code=400,
             )
-        flash(
+        flash_cms_persist(
             request,
-            f"Страница «{page['title']}» создана — на сайте: /p/{page['slug']}",
+            f"Страница «{page['title']}» создана (/p/{page['slug']}).",
         )
         return RedirectResponse(admin_href(f"/pages/{page['id']}"), status_code=303)
 
@@ -387,7 +394,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             )
         updated = cms.get_page(page_id)
         slug = (updated or {}).get("slug") or slug
-        flash(request, f"Страница сохранена — на сайте: /p/{slug}")
+        flash_cms_persist(request, f"Страница сохранена (/p/{slug}).")
         return RedirectResponse(admin_href(f"/pages/{page_id}"), status_code=303)
 
     @router.post("/pages/{page_id}/delete", response_model=None)
@@ -401,8 +408,67 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         if bad_csrf:
             return bad_csrf
         cms.delete_page(page_id)
-        flash(request, "Страница удалена")
+        flash_cms_persist(request, "Страница удалена.")
         return RedirectResponse(admin_href("/pages"), status_code=303)
+
+    @router.post("/cms/s3-check", response_model=None)
+    async def cms_s3_check(
+        request: Request, csrf_token: str = Form("")
+    ) -> Any:
+        denied = require_admin(request)
+        if denied:
+            return denied
+        bad_csrf = ensure_csrf(request, csrf_token)
+        if bad_csrf:
+            return bad_csrf
+        ok, msg = cms.check_s3()
+        flash(request, ("OK: " if ok else "Ошибка: ") + msg)
+        return RedirectResponse(admin_href(""), status_code=303)
+
+    @router.post("/cms/s3-sync", response_model=None)
+    async def cms_s3_sync(
+        request: Request, csrf_token: str = Form("")
+    ) -> Any:
+        denied = require_admin(request)
+        if denied:
+            return denied
+        bad_csrf = ensure_csrf(request, csrf_token)
+        if bad_csrf:
+            return bad_csrf
+        ok, msg = cms.sync_cms_to_s3()
+        flash(request, ("OK: " if ok else "Ошибка: ") + msg)
+        return RedirectResponse(admin_href(""), status_code=303)
+
+    @router.get("/cms/backup")
+    async def cms_backup_download(request: Request) -> Any:
+        denied = require_admin(request)
+        if denied:
+            return denied
+        data = cms.cms_backup_bytes()
+        return Response(
+            content=data,
+            media_type="application/octet-stream",
+            headers={
+                "Content-Disposition": 'attachment; filename="cms.db"',
+            },
+        )
+
+    @router.post("/cms/restore", response_model=None)
+    async def cms_restore_upload(
+        request: Request,
+        csrf_token: str = Form(""),
+        backup: UploadFile = File(...),
+    ) -> Any:
+        denied = require_admin(request)
+        if denied:
+            return denied
+        bad_csrf = ensure_csrf(request, csrf_token)
+        if bad_csrf:
+            return bad_csrf
+        raw = await backup.read()
+        ok, msg = cms.restore_cms_from_bytes(raw)
+        flash(request, ("Восстановлено. " if ok else "Восстановлено локально. ") + msg)
+        return RedirectResponse(admin_href(""), status_code=303)
 
     @router.get("/links", response_class=HTMLResponse)
     async def links_list(request: Request) -> Any:

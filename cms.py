@@ -11,7 +11,13 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from cms_s3 import download_cms_db, s3_configured, upload_cms_db
+from cms_s3 import (
+    download_cms_db,
+    probe_s3,
+    s3_configured,
+    s3_public_info,
+    upload_cms_db,
+)
 from security import admin_base_path, sanitize_html, sanitize_plain_text, validate_href
 from seo import BRAND, DEFAULT_DESCRIPTION
 
@@ -143,11 +149,10 @@ def _seed(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
-def _checkpoint_and_upload() -> None:
-    """Сброс WAL и выгрузка CMS в S3 (если настроено)."""
+def _checkpoint() -> Path:
     path = CMS_PATH
     if not path.exists():
-        return
+        return path
     try:
         conn = _connect(path)
         try:
@@ -156,7 +161,24 @@ def _checkpoint_and_upload() -> None:
             conn.close()
     except sqlite3.Error as exc:
         logger.warning("CMS checkpoint failed: %s", exc)
-    upload_cms_db(path)
+    return path
+
+
+def persist_cms() -> tuple[bool, str]:
+    """Сброс WAL и выгрузка в S3. (ok, message) — ok=False если S3 нужен, но не записался."""
+    path = _checkpoint()
+    if not s3_configured():
+        return False, (
+            "S3 не настроен — после редеплоя страницы пропадут. "
+            "Задайте CMS_S3_BUCKET, CMS_S3_ACCESS_KEY, CMS_S3_SECRET_KEY."
+        )
+    return upload_cms_db(path)
+
+
+def _checkpoint_and_upload() -> None:
+    ok, msg = persist_cms()
+    if not ok:
+        logger.warning("CMS persist: %s", msg)
 
 
 def ensure_cms() -> Path:
@@ -167,9 +189,9 @@ def ensure_cms() -> Path:
         target = CMS_PATH
         # 1) бэкап из Timeweb S3  2) упакованный cms.db  3) пустая схема
         if not target.exists() or target.stat().st_size == 0:
-            if not download_cms_db(target):
-                if PACKAGED_CMS.exists() and PACKAGED_CMS.stat().st_size > 0:
-                    target.write_bytes(PACKAGED_CMS.read_bytes())
+            ok, _msg = download_cms_db(target)
+            if not ok and PACKAGED_CMS.exists() and PACKAGED_CMS.stat().st_size > 0:
+                target.write_bytes(PACKAGED_CMS.read_bytes())
         conn = _connect(target)
         conn.executescript(
             """
@@ -528,13 +550,52 @@ def cms_storage_info() -> dict[str, Any]:
     ephemeral = str(path).startswith("/tmp") or str(path).startswith(
         tempfile.gettempdir()
     )
-    s3 = s3_configured()
+    info = s3_public_info()
+    s3 = bool(info["configured"])
     return {
         "path": str(path),
         "ephemeral": ephemeral and not s3,
         "s3": s3,
         "exists": path.exists(),
+        "s3_info": info,
     }
+
+
+def cms_backup_bytes() -> bytes:
+    """Снимок SQLite для скачивания из админки."""
+    ensure_cms()
+    path = _checkpoint()
+    return path.read_bytes()
+
+
+def restore_cms_from_bytes(data: bytes) -> tuple[bool, str]:
+    """Заменить локальную CMS из загруженного файла и попробовать залить в S3."""
+    global _ready, CMS_PATH
+    if not data or len(data) < 100:
+        return False, "Файл слишком маленький — это не база CMS"
+    if data[:16] != b"SQLite format 3\x00":
+        return False, "Ожидался файл SQLite (cms.db)"
+    with _lock:
+        target = CMS_PATH
+        target.parent.mkdir(parents=True, exist_ok=True)
+        tmp = target.with_suffix(".restore")
+        tmp.write_bytes(data)
+        # снести wal/shm если были
+        for suffix in ("-wal", "-shm"):
+            Path(str(target) + suffix).unlink(missing_ok=True)
+        tmp.replace(target)
+        _ready = False
+    ensure_cms()
+    return persist_cms()
+
+
+def sync_cms_to_s3() -> tuple[bool, str]:
+    ensure_cms()
+    return persist_cms()
+
+
+def check_s3() -> tuple[bool, str]:
+    return probe_s3()
 
 
 def public_footer_links() -> list[dict[str, str]]:
