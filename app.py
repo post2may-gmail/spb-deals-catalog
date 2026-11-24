@@ -258,7 +258,10 @@ def create_app() -> FastAPI:
             "json_ld": json_ld,
             "json_ld_extra": json_ld_extra,
             "google_site_verification": os.getenv("GOOGLE_SITE_VERIFICATION", ""),
-            "yandex_verification": os.getenv("YANDEX_VERIFICATION", ""),
+            # Код подтверждения Яндекс.Вебмастера для sdelkispb.ru
+            "yandex_verification": os.getenv(
+                "YANDEX_VERIFICATION", "c61284db6bb2b623"
+            ),
         }
         ctx.update(extra)
         return ctx
