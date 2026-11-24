@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 import re
 import sqlite3
@@ -10,8 +11,11 @@ import threading
 from pathlib import Path
 from typing import Any
 
+from cms_s3 import download_cms_db, s3_configured, upload_cms_db
 from security import admin_base_path, sanitize_html, sanitize_plain_text, validate_href
 from seo import BRAND, DEFAULT_DESCRIPTION
+
+logger = logging.getLogger(__name__)
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 PACKAGED_CMS = DATA_DIR / "cms.db"
@@ -139,16 +143,33 @@ def _seed(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _checkpoint_and_upload() -> None:
+    """Сброс WAL и выгрузка CMS в S3 (если настроено)."""
+    path = CMS_PATH
+    if not path.exists():
+        return
+    try:
+        conn = _connect(path)
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            conn.close()
+    except sqlite3.Error as exc:
+        logger.warning("CMS checkpoint failed: %s", exc)
+    upload_cms_db(path)
+
+
 def ensure_cms() -> Path:
     global _ready, CMS_PATH
     with _lock:
         if _ready and CMS_PATH.exists() and CMS_PATH.stat().st_size > 0:
             return CMS_PATH
         target = CMS_PATH
-        if PACKAGED_CMS.exists() and PACKAGED_CMS.stat().st_size > 0 and (
-            not target.exists() or target.stat().st_size == 0
-        ):
-            target.write_bytes(PACKAGED_CMS.read_bytes())
+        # 1) бэкап из Timeweb S3  2) упакованный cms.db  3) пустая схема
+        if not target.exists() or target.stat().st_size == 0:
+            if not download_cms_db(target):
+                if PACKAGED_CMS.exists() and PACKAGED_CMS.stat().st_size > 0:
+                    target.write_bytes(PACKAGED_CMS.read_bytes())
         conn = _connect(target)
         conn.executescript(
             """
@@ -225,6 +246,7 @@ def save_texts(values: dict[str, str]) -> None:
         conn.commit()
     finally:
         conn.close()
+    _checkpoint_and_upload()
 
 
 def list_pages(*, published_only: bool = False) -> list[dict[str, Any]]:
@@ -385,11 +407,13 @@ def create_page(
             ),
         )
         conn.commit()
-        return get_page(int(cur.lastrowid)), None
+        page = get_page(int(cur.lastrowid))
     except sqlite3.IntegrityError:
         return None, "Страница с таким адресом уже есть"
     finally:
         conn.close()
+    _checkpoint_and_upload()
+    return page, None
 
 
 def update_page(
@@ -436,11 +460,12 @@ def update_page(
         conn.commit()
         if cur.rowcount == 0:
             return "Страница не найдена"
-        return None
     except sqlite3.IntegrityError:
         return "Страница с таким адресом уже есть"
     finally:
         conn.close()
+    _checkpoint_and_upload()
+    return None
 
 
 def delete_page(page_id: int) -> None:
@@ -450,6 +475,7 @@ def delete_page(page_id: int) -> None:
         conn.commit()
     finally:
         conn.close()
+    _checkpoint_and_upload()
 
 
 def list_nav_links(location: str | None = None, *, visible_only: bool = False) -> list[dict[str, Any]]:
@@ -502,9 +528,11 @@ def cms_storage_info() -> dict[str, Any]:
     ephemeral = str(path).startswith("/tmp") or str(path).startswith(
         tempfile.gettempdir()
     )
+    s3 = s3_configured()
     return {
         "path": str(path),
-        "ephemeral": ephemeral,
+        "ephemeral": ephemeral and not s3,
+        "s3": s3,
         "exists": path.exists(),
     }
 
@@ -545,9 +573,11 @@ def create_nav_link(
         row = conn.execute(
             "SELECT * FROM nav_links WHERE id = ?", (cur.lastrowid,)
         ).fetchone()
-        return dict(row) if row else None, None
+        result = dict(row) if row else None
     finally:
         conn.close()
+    _checkpoint_and_upload()
+    return result, None
 
 
 def update_nav_link(
@@ -578,9 +608,10 @@ def update_nav_link(
         conn.commit()
         if cur.rowcount == 0:
             return "Ссылка не найдена"
-        return None
     finally:
         conn.close()
+    _checkpoint_and_upload()
+    return None
 
 
 def delete_nav_link(link_id: int) -> None:
@@ -590,6 +621,7 @@ def delete_nav_link(link_id: int) -> None:
         conn.commit()
     finally:
         conn.close()
+    _checkpoint_and_upload()
 
 
 def get_nav_link(link_id: int) -> dict[str, Any] | None:

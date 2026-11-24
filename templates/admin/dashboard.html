@@ -4,8 +4,10 @@
 <section class="admin-card">
   <h1>Управление сайтом</h1>
   <p class="muted">Редактируйте тексты главной, добавляйте страницы и ссылки в меню.</p>
-  {% if cms_storage and cms_storage.ephemeral %}
-  <p class="form-error">База CMS сейчас в эфемерном каталоге (<code>{{ cms_storage.path }}</code>). После редеплоя страницы могут пропасть. В Timeweb задайте том и переменную <code>CMS_DB_PATH=/data/spb_cms.db</code>.</p>
+  {% if cms_storage and cms_storage.s3 %}
+  <p class="admin-flash">CMS сохраняется в Timeweb S3 — страницы переживут редеплой.</p>
+  {% elif cms_storage and cms_storage.ephemeral %}
+  <p class="form-error">База CMS в <code>{{ cms_storage.path }}</code> (пропадёт при редеплое). У Apps нет постоянного диска: создайте бакет в <a href="https://timeweb.cloud/my/storage" target="_blank" rel="noopener">Хранилище S3</a> и задайте переменные <code>CMS_S3_BUCKET</code>, <code>CMS_S3_ACCESS_KEY</code>, <code>CMS_S3_SECRET_KEY</code>.</p>
   {% endif %}
   <div class="admin-grid">
     <a class="admin-tile" href="{{ admin_base }}/texts">
