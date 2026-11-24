@@ -265,6 +265,9 @@ def create_app() -> FastAPI:
             "yandex_verification": os.getenv(
                 "YANDEX_VERIFICATION", "c61284db6bb2b623"
             ),
+            "yandex_metrika_id": (
+                os.getenv("YANDEX_METRIKA_ID", "114652550") or ""
+            ).strip(),
         }
         ctx.update(extra)
         return ctx
