@@ -65,17 +65,35 @@ _IP_LIKE = re.compile(
     r")$"
 )
 
-# Яндекс.Метрика: inline-счётчик + tag.js, пиксель, XHR/beacon, webvisor (blob/frame).
+# Яндекс.Метрика (см. support: install-counter-csp): скрипты, пиксель, connect, фреймы.
+_METRIKA_SCRIPT = (
+    "https://mc.yandex.ru https://mc.yandex.com https://mc.webvisor.com "
+    "https://mc.webvisor.org https://yastatic.net"
+)
+_METRIKA_CONNECT = (
+    "https://mc.yandex.ru https://mc.yandex.com https://mc.webvisor.com "
+    "https://mc.webvisor.org wss://mc.yandex.ru wss://mc.yandex.com "
+    "wss://mc.webvisor.com wss://mc.webvisor.org"
+)
+_METRIKA_FRAME_ANCESTORS = (
+    "https://metrika.yandex.ru https://metrika.yandex.by "
+    "https://metrika.yandex.com https://metrika.ya.ru "
+    "https://metrica.yandex.ru https://metrica.yandex.by "
+    "https://metrica.yandex.com https://metrica.yandex.com.tr "
+    "https://metrica.ya.ru https://analytics.yandex.ru "
+    "https://analytics.yandex.com https://webvisor.com https://*.webvisor.com"
+)
 _CSP = (
     "default-src 'self'; "
-    "script-src 'self' 'unsafe-inline' https://mc.yandex.ru https://mc.yandex.com; "
-    "style-src 'self' https://fonts.googleapis.com; "
+    f"script-src 'self' 'unsafe-inline' {_METRIKA_SCRIPT}; "
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
     "font-src 'self' https://fonts.gstatic.com; "
-    "img-src 'self' data: https://mc.yandex.ru https://mc.yandex.com; "
-    "connect-src 'self' https://mc.yandex.ru https://mc.yandex.com; "
-    "child-src blob: https://mc.yandex.ru https://mc.yandex.com; "
-    "frame-src blob: https://mc.yandex.ru https://mc.yandex.com; "
-    "frame-ancestors 'none'; "
+    f"img-src 'self' data: {_METRIKA_SCRIPT}; "
+    f"connect-src 'self' {_METRIKA_CONNECT}; "
+    f"child-src blob: {_METRIKA_SCRIPT}; "
+    f"frame-src blob: {_METRIKA_SCRIPT}; "
+    f"frame-ancestors 'self' {_METRIKA_FRAME_ANCESTORS}; "
+    "worker-src blob: 'self'; "
     "base-uri 'self'; "
     "form-action 'self'"
 )
@@ -520,7 +538,8 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
         response.headers.setdefault("Content-Security-Policy", _CSP)
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        # Не ставим X-Frame-Options: DENY — он ломает проверку/Вебвизор Метрики
+        # (фреймы с metrika.yandex.ru). Ограничение фреймов — через CSP frame-ancestors.
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault(
