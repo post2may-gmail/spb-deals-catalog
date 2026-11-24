@@ -88,17 +88,8 @@ def require_admin_password() -> str | None:
     return value or None
 
 
-_ephemeral_session_secret: str | None = None
-
-
 def require_session_secret() -> str:
-    """Секрет cookie-сессии админки.
-
-    Предпочтительно ADMIN_SESSION_SECRET / SESSION_SECRET из окружения.
-    Если не задан — одноразовый секрет на процесс (каталог поднимается,
-    админ-сессии не переживают рестарт). На проде задайте постоянный секрет.
-    """
-    global _ephemeral_session_secret
+    """Секрет сессии только из окружения — без ephemeral fallback."""
     value = (
         os.getenv("ADMIN_SESSION_SECRET")
         or os.getenv("SESSION_SECRET")
@@ -106,13 +97,9 @@ def require_session_secret() -> str:
     ).strip()
     if value:
         return value
-    if _ephemeral_session_secret is None:
-        _ephemeral_session_secret = secrets.token_urlsafe(48)
-        logger.warning(
-            "ADMIN_SESSION_SECRET не задан — используется временный секрет процесса. "
-            "Задайте ADMIN_SESSION_SECRET в env для стабильной админки."
-        )
-    return _ephemeral_session_secret
+    raise RuntimeError(
+        "Задайте ADMIN_SESSION_SECRET (или SESSION_SECRET) перед запуском."
+    )
 
 
 def sessions_https_only() -> bool:
@@ -248,18 +235,19 @@ def rotate_session(request: Request) -> None:
 def client_ip(request: Request) -> str:
     """IP для admin allowlist, rate limit и lockout.
 
-    Заголовки клиента (X-Forwarded-For / X-Real-IP) читаются только если
-    TRUST_PROXY=1 и непосредственный peer входит в TRUSTED_PROXY_IPS.
+    X-Forwarded-For учитывается только если TRUST_PROXY=1 и непосредственный
+    peer (request.client.host) входит в TRUSTED_PROXY_IPS.
 
-    Для X-Forwarded-For берём **правый** адрес вне списка прокси — иначе
-    клиент мог бы подставить allowlist-IP слева в заголовке.
+    Берём **правый** (ближайший к нам) адрес, который не является доверенным
+    прокси: так клиент не может подставить allowlist-IP слева в заголовке.
+    Цепочка ``spoof, real-client`` при одном trusted hop → ``real-client``.
     """
     direct = request.client.host if request.client and request.client.host else None
     if trust_proxy_headers():
         peers = trusted_proxy_peers()
         if not peers:
             logger.warning(
-                "TRUST_PROXY=1 без TRUSTED_PROXY_IPS — proxy-заголовки игнорируются"
+                "TRUST_PROXY=1 без TRUSTED_PROXY_IPS — X-Forwarded-For игнорируется"
             )
         elif direct and direct in peers:
             forwarded = request.headers.get("x-forwarded-for") or ""
@@ -268,13 +256,11 @@ def client_ip(request: Request) -> str:
                 cand = part.strip()
                 if cand and _IP_LIKE.match(cand):
                     candidates.append(cand)
+            # Справа налево: пропускаем hop'ы из TRUSTED_PROXY_IPS.
             for cand in reversed(candidates):
                 if cand not in peers:
                     return cand
-            # Caddy/nginx часто ставят один hop в X-Real-IP.
-            real_ip = (request.headers.get("x-real-ip") or "").strip()
-            if real_ip and _IP_LIKE.match(real_ip) and real_ip not in peers:
-                return real_ip
+            # Все hop'ы — доверенные прокси; fallback на peer.
     return direct or "unknown"
 
 

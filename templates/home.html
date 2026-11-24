@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero">
-  <p class="hero-kicker">{{ texts.hero_kicker if texts else "Росреестр · Санкт-Петербург" }}</p>
+  <p class="hero-kicker">{{ texts.hero_kicker if texts else "По договорам купли-продажи с 2024 года" }}</p>
   <h1 class="hero-brand">{{ brand }}</h1>
-  <p class="hero-lead">{{ texts.hero_lead if texts else "Квартиры, комнаты и доли — по улицам города, по данным Росреестра." }}</p>
+  <p class="hero-lead">{{ texts.hero_lead if texts else "По данным Росреестра по сделкам купли-продажи жилых помещений (квартиры, комнаты, доли). Поиск цен по названиям улиц и алфавитному указателю улиц" }}</p>
 
   <form class="search-panel" action="/search" method="get" autocomplete="off" data-period-guard>
     <label class="field grow">

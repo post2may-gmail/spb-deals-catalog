@@ -34,12 +34,16 @@ TEXT_FIELDS: list[dict[str, str]] = [
     {
         "key": "hero_kicker",
         "label": "Подзаголовок над названием на главной",
-        "default": "Росреестр · Санкт-Петербург",
+        "default": "По договорам купли-продажи с 2024 года",
     },
     {
         "key": "hero_lead",
         "label": "Короткий текст под названием на главной",
-        "default": "Квартиры, комнаты и доли — по улицам города, по данным Росреестра.",
+        "default": (
+            "По данным Росреестра по сделкам купли-продажи жилых помещений "
+            "(квартиры, комнаты, доли). Поиск цен по названиям улиц и "
+            "алфавитному указателю улиц"
+        ),
     },
     {
         "key": "search_placeholder",
@@ -75,15 +79,34 @@ def _connect(path: Path | None = None) -> sqlite3.Connection:
     return conn
 
 
+# Старые дефолты → новые (на уже задеплоенном cms.db).
+_TEXT_MIGRATIONS: dict[str, tuple[str, ...]] = {
+    "hero_kicker": ("Росреестр · Санкт-Петербург",),
+    "hero_lead": (
+        "Квартиры, комнаты и доли — по улицам города, по данным Росреестра.",
+    ),
+}
+
+
 def _seed(conn: sqlite3.Connection) -> None:
     for field in TEXT_FIELDS:
         conn.execute(
             "INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",
             (field["key"], field["default"]),
         )
+    defaults = {f["key"]: f["default"] for f in TEXT_FIELDS}
+    for key, old_values in _TEXT_MIGRATIONS.items():
+        new_value = defaults.get(key)
+        if not new_value:
+            continue
+        for old in old_values:
+            conn.execute(
+                "UPDATE settings SET value = ? WHERE key = ? AND value = ?",
+                (new_value, key, old),
+            )
     existing = conn.execute("SELECT COUNT(*) FROM nav_links").fetchone()[0]
     if existing == 0:
-        defaults = [
+        nav_defaults = [
             ("Поиск", "/", "header", 10, 1),
             ("Каталог улиц", "/catalog", "header", 20, 1),
         ]
@@ -92,7 +115,7 @@ def _seed(conn: sqlite3.Connection) -> None:
             INSERT INTO nav_links(label, href, location, sort_order, is_visible)
             VALUES (?, ?, ?, ?, ?)
             """,
-            defaults,
+            nav_defaults,
         )
     conn.commit()
 

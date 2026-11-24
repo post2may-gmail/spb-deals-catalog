@@ -17,6 +17,7 @@ from typing import Any, Iterable
 from clean import clean_deal_row
 from db import CSV_GZ, CSV_PLAIN, rebuild_from_csv
 from normalize import normalize_street
+from street_canon import canonicalize_street
 
 # Возможные заголовки в выгрузках Росреестра / Excel с компьютера пользователя
 COLUMN_ALIASES: dict[str, tuple[str, ...]] = {
@@ -369,12 +370,14 @@ def filter_row(row: dict[str, Any], mapping: dict[str, str]) -> dict[str, str] |
     retype = _decode_code(_cell(row, mapping, "realestate_type"), REALESTATE_TYPE_CODES)
     purpose = _decode_code(_cell(row, mapping, "purpose"), PURPOSE_CODES)
     walls = _decode_code(_cell(row, mapping, "wall_material"), WALL_MATERIAL_CODES)
+    quarter_cad = _cell(row, mapping, "quarter_cad_number")
+    street = canonicalize_street(street, quarter_cad)
     candidate = {
         "period_start_date": period,
         "city": city,
         "district": _cell(row, mapping, "district"),
         "street": street,
-        "quarter_cad_number": _cell(row, mapping, "quarter_cad_number"),
+        "quarter_cad_number": quarter_cad,
         "realestate_type": retype or "Помещения",
         "purpose": purpose or "Жилое",
         "wall_material": walls,

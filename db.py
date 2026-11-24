@@ -14,6 +14,7 @@ from typing import Any
 from clean import clean_deal_row
 from normalize import normalize_street, street_letter
 from periods import Quarter, available_quarters
+from street_canon import canonicalize_street
 
 logger = logging.getLogger(__name__)
 
@@ -128,7 +129,10 @@ def rebuild_from_csv(csv_path: Path | None = None, db_path: Path | None = None) 
             row = cleaned.row
             area = float(row["area"])
             price = float(row["deal_price"])
-            street = row["street"]
+            street = canonicalize_street(
+                row["street"],
+                row.get("quarter_cad_number") or row.get("quarter_cad") or "",
+            )
             period = (row.get("period_start_date") or row.get("period_start") or "").strip()
             year, quarter = _period_yq(period)
             sn = normalize_street(street)

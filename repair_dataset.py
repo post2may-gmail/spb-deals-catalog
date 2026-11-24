@@ -15,6 +15,7 @@ from pathlib import Path
 from clean import clean_deal_row
 from db import CSV_GZ, CSV_PLAIN, rebuild_from_csv
 from import_data import OUT_FIELDS
+from street_canon import canonicalize_street
 
 
 def repair(source: Path | None = None) -> tuple[int, int, Counter[str]]:
@@ -43,6 +44,10 @@ def repair(source: Path | None = None) -> tuple[int, int, Counter[str]]:
                 out = {k: result.row.get(k, "") for k in OUT_FIELDS}
                 if not out.get("currency"):
                     out["currency"] = "рубль"
+                out["street"] = canonicalize_street(
+                    out.get("street") or "",
+                    out.get("quarter_cad_number") or "",
+                )
                 writer.writerow(out)
                 kept += 1
         tmp_path = Path(tmp.name)
