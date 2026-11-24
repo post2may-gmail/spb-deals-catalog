@@ -232,13 +232,47 @@ def admin_allowed_ips() -> set[str]:
     return allowed
 
 
-def admin_access_allowed(ip: str, request: Request | None = None) -> bool:
-    """Доступ к /admin только по ADMIN_ALLOWED_IPS.
+def admin_base_path() -> str:
+    """Секретный префикс админки без слэшей: /{path}/login.
 
-    На проде (без ADMIN_ALLOW_HTTP / ADMIN_ALLOW_LOOPBACK) loopback и
-    placeholder-IP не дают доступ: иначе за reverse-proxy все выглядят как
-    127.0.0.1 и allowlist с localhost открыл бы /admin всему интернету.
+    Задаётся ADMIN_BASE_PATH (например fuckingcrazyadmin). По умолчанию admin.
     """
+    raw = (os.getenv("ADMIN_BASE_PATH") or "admin").strip().strip("/")
+    if not raw or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{1,63}", raw):
+        logger.warning("ADMIN_BASE_PATH некорректен %r — используем admin", raw)
+        return "admin"
+    # Не даём пересечься с публичными маршрутами сайта.
+    reserved = {
+        "api",
+        "catalog",
+        "search",
+        "street",
+        "static",
+        "p",
+        "sitemaps",
+        "docs",
+        "redoc",
+        "openapi.json",
+    }
+    if raw.lower() in reserved:
+        logger.warning("ADMIN_BASE_PATH=%r зарезервирован — используем admin", raw)
+        return "admin"
+    return raw
+
+
+def admin_base_url() -> str:
+    return "/" + admin_base_path()
+
+
+def admin_access_allowed(ip: str, request: Request | None = None) -> bool:
+    """Опциональный IP-gate для админки.
+
+    Если ADMIN_ALLOWED_IPS не задан — IP не проверяем (секретный путь + пароль).
+    Если задан — только эти IP (после фильтрации loopback-заглушек).
+    """
+    raw = (os.getenv("ADMIN_ALLOWED_IPS") or "").strip()
+    if not raw:
+        return True
     allowed = admin_allowed_ips()
     if not allowed:
         return False
@@ -586,7 +620,8 @@ class HeavyRequestLimitMiddleware(BaseHTTPMiddleware):
         if (
             path.startswith("/static/")
             or path in {"/favicon.svg", "/favicon.ico", "/robots.txt"}
-            or path.startswith("/admin")
+            or path == admin_base_url()
+            or path.startswith(admin_base_url() + "/")
         ):
             return await call_next(request)
         heavy = (

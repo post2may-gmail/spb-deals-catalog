@@ -4,7 +4,7 @@
 <section class="admin-card">
   <div class="admin-row">
     <h1>Ссылки меню</h1>
-    <a class="btn-primary" href="/admin/links/new">Новая ссылка</a>
+    <a class="btn-primary" href="{{ admin_base }}/links/new">Новая ссылка</a>
   </div>
   <p class="muted">Ссылки в шапке и подвале. Страницы с галочкой «в меню» добавляются автоматически.</p>
   {% if links %}
@@ -21,7 +21,7 @@
     <tbody>
       {% for l in links %}
       <tr>
-        <td><a href="/admin/links/{{ l.id }}">{{ l.label }}</a></td>
+        <td><a href="{{ admin_base }}/links/{{ l.id }}">{{ l.label }}</a></td>
         <td><code>{{ l.href }}</code></td>
         <td>{{ l.location }}</td>
         <td>{{ l.sort_order }}</td>

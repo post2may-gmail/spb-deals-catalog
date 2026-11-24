@@ -8,15 +8,15 @@
   <p class="form-error">База CMS сейчас в эфемерном каталоге (<code>{{ cms_storage.path }}</code>). После редеплоя страницы могут пропасть. В Timeweb задайте том и переменную <code>CMS_DB_PATH=/data/spb_cms.db</code>.</p>
   {% endif %}
   <div class="admin-grid">
-    <a class="admin-tile" href="/admin/texts">
+    <a class="admin-tile" href="{{ admin_base }}/texts">
       <strong>Тексты</strong>
       <span>Название, описания, подписи на главной</span>
     </a>
-    <a class="admin-tile" href="/admin/pages">
+    <a class="admin-tile" href="{{ admin_base }}/pages">
       <strong>Страницы</strong>
       <span>{{ pages_count }} шт. — «О проекте», контакты и т.п.</span>
     </a>
-    <a class="admin-tile" href="/admin/links">
+    <a class="admin-tile" href="{{ admin_base }}/links">
       <strong>Ссылки меню</strong>
       <span>{{ links_count }} шт. в шапке/подвале</span>
     </a>

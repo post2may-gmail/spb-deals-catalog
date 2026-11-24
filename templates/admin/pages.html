@@ -4,7 +4,7 @@
 <section class="admin-card">
   <div class="admin-row">
     <h1>Страницы</h1>
-    <a class="btn-primary" href="/admin/pages/new">Новая страница</a>
+    <a class="btn-primary" href="{{ admin_base }}/pages/new">Новая страница</a>
   </div>
   {% if pages %}
   <table class="admin-table">
@@ -19,7 +19,7 @@
     <tbody>
       {% for p in pages %}
       <tr>
-        <td><a href="/admin/pages/{{ p.id }}">{{ p.title }}</a></td>
+        <td><a href="{{ admin_base }}/pages/{{ p.id }}">{{ p.title }}</a></td>
         <td><code>/p/{{ p.slug }}</code></td>
         <td>
           {% if p.is_published %}опубликована{% else %}черновик{% endif %}

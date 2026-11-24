@@ -33,6 +33,8 @@ from periods import Quarter
 from security import (
     BlockPrivatePathsMiddleware,
     HeavyRequestLimitMiddleware,
+    admin_base_path,
+    admin_base_url,
     SecurityHeadersMiddleware,
     client_ip,
     rate_limit_exceeded,
@@ -580,8 +582,8 @@ def create_app() -> FastAPI:
             "User-agent: *\n"
             "Allow: /\n"
             "Disallow: /api/\n"
-            "Disallow: /admin\n"
-            "Disallow: /admin/\n"
+            f"Disallow: {admin_base_url()}\n"
+            f"Disallow: {admin_base_url()}/\n"
             "Disallow: /search?\n"
             "Disallow: /*?*period_from=\n"
             "Disallow: /*?*period_to=\n"

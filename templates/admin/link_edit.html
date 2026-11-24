@@ -4,7 +4,7 @@
 <section class="admin-card">
   <h1>{% if link %}Редактирование ссылки{% else %}Новая ссылка{% endif %}</h1>
   {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-  <form method="post" action="{% if link %}/admin/links/{{ link.id }}{% else %}/admin/links/new{% endif %}" class="admin-form">
+  <form method="post" action="{% if link %}{{ admin_base }}/links/{{ link.id }}{% else %}{{ admin_base }}/links/new{% endif %}" class="admin-form">
     {% include "admin/_csrf.html" %}
     <label class="field">
       <span>Название</span>
@@ -31,11 +31,11 @@
     </label>
     <div class="admin-actions">
       <button class="btn-primary" type="submit">Сохранить</button>
-      <a class="btn-secondary" href="/admin/links">К списку</a>
+      <a class="btn-secondary" href="{{ admin_base }}/links">К списку</a>
     </div>
   </form>
   {% if link %}
-  <form method="post" action="/admin/links/{{ link.id }}/delete" class="admin-danger" onsubmit="return confirm('Удалить ссылку?');">
+  <form method="post" action="{{ admin_base }}/links/{{ link.id }}/delete" class="admin-danger" onsubmit="return confirm('Удалить ссылку?');">
     {% include "admin/_csrf.html" %}
     <button type="submit" class="btn-danger">Удалить</button>
   </form>

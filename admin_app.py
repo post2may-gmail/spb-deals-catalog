@@ -13,6 +13,7 @@ from fastapi.templating import Jinja2Templates
 import cms
 from security import (
     admin_access_allowed,
+    admin_base_url,
     clear_login_failures,
     client_ip,
     issue_csrf,
@@ -32,7 +33,15 @@ def _authed(request: Request) -> bool:
 
 
 def build_admin_router(templates: Jinja2Templates) -> APIRouter:
-    router = APIRouter(prefix="/admin", tags=["admin"])
+    base = admin_base_url()  # например /fuckingcrazyadmin
+    router = APIRouter(prefix=base, tags=["admin"])
+
+    def admin_href(suffix: str = "") -> str:
+        if not suffix:
+            return base
+        if not suffix.startswith("/"):
+            suffix = "/" + suffix
+        return base + suffix
 
     def ctx(request: Request, **extra: Any) -> dict[str, Any]:
         data = {
@@ -42,6 +51,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             "admin_section": extra.pop("admin_section", ""),
             "csrf_token": issue_csrf(request),
             "admin_configured": require_admin_password() is not None,
+            "admin_base": base,
         }
         data.update(extra)
         return data
@@ -58,7 +68,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         return reject_csrf()
 
     def deny_admin_gate(request: Request) -> HTMLResponse | None:
-        """Без ADMIN_ALLOWED_IPS админка скрыта (404)."""
+        """Опциональный IP-gate. Если ADMIN_ALLOWED_IPS пуст — пропускаем всех."""
         ip = client_ip(request)
         if admin_access_allowed(ip, request):
             return None
@@ -78,7 +88,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             return gated
         if _authed(request):
             return None
-        return RedirectResponse("/admin/login", status_code=302)
+        return RedirectResponse(admin_href("/login"), status_code=302)
 
     @router.get("/login", response_class=HTMLResponse)
     async def login_form(request: Request) -> HTMLResponse:
@@ -86,7 +96,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         if gated:
             return gated
         if _authed(request):
-            return RedirectResponse("/admin", status_code=302)
+            return RedirectResponse(admin_href(), status_code=302)
         return templates.TemplateResponse(
             request, "admin/login.html", ctx(request, error=None)
         )
@@ -134,7 +144,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             request.session["admin"] = True
             issue_csrf(request)
             flash(request, "Вы вошли в админку")
-            return RedirectResponse("/admin", status_code=303)
+            return RedirectResponse(admin_href(), status_code=303)
 
         register_login_failure(ip)
         return templates.TemplateResponse(
@@ -155,7 +165,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         if bad_csrf:
             return bad_csrf
         request.session.clear()
-        return RedirectResponse("/admin/login", status_code=303)
+        return RedirectResponse(admin_href("/login"), status_code=303)
 
     @router.get("", response_class=HTMLResponse)
     async def dashboard(request: Request) -> Any:
@@ -203,7 +213,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         values = {f["key"]: str(form.get(f["key"], "")) for f in cms.TEXT_FIELDS}
         cms.save_texts(values)
         flash(request, "Тексты сохранены")
-        return RedirectResponse("/admin/texts", status_code=303)
+        return RedirectResponse(admin_href("/texts"), status_code=303)
 
     @router.get("/pages", response_class=HTMLResponse)
     async def pages_list(request: Request) -> Any:
@@ -293,7 +303,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             request,
             f"Страница «{page['title']}» создана — на сайте: /p/{page['slug']}",
         )
-        return RedirectResponse(f"/admin/pages/{page['id']}", status_code=303)
+        return RedirectResponse(admin_href(f"/pages/{page['id']}"), status_code=303)
 
     @router.get("/pages/{page_id}", response_class=HTMLResponse)
     async def page_edit(request: Request, page_id: int) -> Any:
@@ -303,7 +313,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         page = cms.get_page(page_id)
         if not page:
             flash(request, "Страница не найдена")
-            return RedirectResponse("/admin/pages", status_code=302)
+            return RedirectResponse(admin_href("/pages"), status_code=302)
         return templates.TemplateResponse(
             request,
             "admin/page_edit.html",
@@ -378,7 +388,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         updated = cms.get_page(page_id)
         slug = (updated or {}).get("slug") or slug
         flash(request, f"Страница сохранена — на сайте: /p/{slug}")
-        return RedirectResponse(f"/admin/pages/{page_id}", status_code=303)
+        return RedirectResponse(admin_href(f"/pages/{page_id}"), status_code=303)
 
     @router.post("/pages/{page_id}/delete", response_model=None)
     async def page_delete(
@@ -392,7 +402,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             return bad_csrf
         cms.delete_page(page_id)
         flash(request, "Страница удалена")
-        return RedirectResponse("/admin/pages", status_code=303)
+        return RedirectResponse(admin_href("/pages"), status_code=303)
 
     @router.get("/links", response_class=HTMLResponse)
     async def links_list(request: Request) -> Any:
@@ -471,7 +481,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
                 status_code=400,
             )
         flash(request, "Ссылка добавлена")
-        return RedirectResponse(f"/admin/links/{link['id']}", status_code=303)
+        return RedirectResponse(admin_href(f"/links/{link['id']}"), status_code=303)
 
     @router.get("/links/{link_id}", response_class=HTMLResponse)
     async def link_edit(request: Request, link_id: int) -> Any:
@@ -481,7 +491,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
         link = cms.get_nav_link(link_id)
         if not link:
             flash(request, "Ссылка не найдена")
-            return RedirectResponse("/admin/links", status_code=302)
+            return RedirectResponse(admin_href("/links"), status_code=302)
         return templates.TemplateResponse(
             request,
             "admin/link_edit.html",
@@ -545,7 +555,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
                 status_code=400,
             )
         flash(request, "Ссылка сохранена")
-        return RedirectResponse(f"/admin/links/{link_id}", status_code=303)
+        return RedirectResponse(admin_href(f"/links/{link_id}"), status_code=303)
 
     @router.post("/links/{link_id}/delete", response_model=None)
     async def link_delete(
@@ -559,6 +569,6 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
             return bad_csrf
         cms.delete_nav_link(link_id)
         flash(request, "Ссылка удалена")
-        return RedirectResponse("/admin/links", status_code=303)
+        return RedirectResponse(admin_href("/links"), status_code=303)
 
     return router

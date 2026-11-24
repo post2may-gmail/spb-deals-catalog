@@ -3,12 +3,12 @@
 {% block content %}
 <section class="admin-card narrow">
   <h1>Вход в админку</h1>
-  <p class="muted">Пароль из <code>ADMIN_PASSWORD</code>. Доступ только с IP из <code>ADMIN_ALLOWED_IPS</code>.</p>
+  <p class="muted">Пароль из <code>ADMIN_PASSWORD</code>. Адрес входа секретный (<code>ADMIN_BASE_PATH</code>). IP-список необязателен.</p>
   {% if not admin_configured %}
   <p class="form-error">ADMIN_PASSWORD не задан — админка отключена.</p>
   {% endif %}
   {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-  <form method="post" action="/admin/login" class="admin-form">
+  <form method="post" action="{{ admin_base }}/login" class="admin-form">
     {% include "admin/_csrf.html" %}
     <label class="field">
       <span>Пароль</span>

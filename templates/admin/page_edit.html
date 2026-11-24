@@ -4,7 +4,7 @@
 <section class="admin-card">
   <h1>{% if page %}{{ form.title or 'Страница' }}{% else %}Новая страница{% endif %}</h1>
   {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-  <form method="post" action="{% if page %}/admin/pages/{{ page.id }}{% else %}/admin/pages/new{% endif %}" class="admin-form" id="page-form">
+  <form method="post" action="{% if page %}{{ admin_base }}/pages/{{ page.id }}{% else %}{{ admin_base }}/pages/new{% endif %}" class="admin-form" id="page-form">
     {% include "admin/_csrf.html" %}
     <label class="field">
       <span>Заголовок</span>
@@ -37,14 +37,14 @@
     </label>
     <div class="admin-actions">
       <button class="btn-primary" type="submit">Сохранить</button>
-      <a class="btn-secondary" href="/admin/pages">К списку</a>
+      <a class="btn-secondary" href="{{ admin_base }}/pages">К списку</a>
       {% if page and form.slug %}
       <a class="btn-secondary" href="/p/{{ form.slug }}" target="_blank" rel="noopener">Открыть на сайте ↗</a>
       {% endif %}
     </div>
   </form>
   {% if page %}
-  <form method="post" action="/admin/pages/{{ page.id }}/delete" class="admin-danger" onsubmit="return confirm('Удалить страницу?');">
+  <form method="post" action="{{ admin_base }}/pages/{{ page.id }}/delete" class="admin-danger" onsubmit="return confirm('Удалить страницу?');">
     {% include "admin/_csrf.html" %}
     <button type="submit" class="btn-danger">Удалить страницу</button>
   </form>

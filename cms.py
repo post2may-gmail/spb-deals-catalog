@@ -10,7 +10,7 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from security import sanitize_html, sanitize_plain_text, validate_href
+from security import admin_base_path, sanitize_html, sanitize_plain_text, validate_href
 from seo import BRAND, DEFAULT_DESCRIPTION
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -342,6 +342,7 @@ def validate_slug(slug: str) -> str | None:
         "favicon.svg",
         "p",
     }
+    reserved.add(admin_base_path().lower())
     if s in reserved:
         return "Этот адрес зарезервирован"
     return None

@@ -3,7 +3,7 @@
 {% block content %}
 <section class="admin-card">
   <h1>Тексты сайта</h1>
-  <form method="post" action="/admin/texts" class="admin-form">
+  <form method="post" action="{{ admin_base }}/texts" class="admin-form">
     {% include "admin/_csrf.html" %}
     {% for f in fields %}
     <label class="field">

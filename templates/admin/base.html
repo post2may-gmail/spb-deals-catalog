@@ -10,15 +10,15 @@
 </head>
 <body class="admin-body">
   <header class="admin-header">
-    <a class="admin-brand" href="/admin">Админка</a>
+    <a class="admin-brand" href="{{ admin_base }}">Админка</a>
     {% if authed %}
     <nav class="admin-nav">
-      <a href="/admin" class="{% if admin_section == 'home' %}is-active{% endif %}">Обзор</a>
-      <a href="/admin/texts" class="{% if admin_section == 'texts' %}is-active{% endif %}">Тексты</a>
-      <a href="/admin/pages" class="{% if admin_section == 'pages' %}is-active{% endif %}">Страницы</a>
-      <a href="/admin/links" class="{% if admin_section == 'links' %}is-active{% endif %}">Ссылки</a>
+      <a href="{{ admin_base }}" class="{% if admin_section == 'home' %}is-active{% endif %}">Обзор</a>
+      <a href="{{ admin_base }}/texts" class="{% if admin_section == 'texts' %}is-active{% endif %}">Тексты</a>
+      <a href="{{ admin_base }}/pages" class="{% if admin_section == 'pages' %}is-active{% endif %}">Страницы</a>
+      <a href="{{ admin_base }}/links" class="{% if admin_section == 'links' %}is-active{% endif %}">Ссылки</a>
       <a href="/" target="_blank" rel="noopener">Сайт ↗</a>
-      <form action="/admin/logout" method="post" class="inline">
+      <form action="{{ admin_base }}/logout" method="post" class="inline">
         {% include "admin/_csrf.html" %}
         <button type="submit" class="linkish">Выйти</button>
       </form>
