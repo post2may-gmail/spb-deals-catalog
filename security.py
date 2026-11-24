@@ -537,9 +537,13 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         response = await call_next(request)
-        response.headers.setdefault("Content-Security-Policy", _CSP)
-        # Не ставим X-Frame-Options: DENY — он ломает проверку/Вебвизор Метрики
-        # (фреймы с metrika.yandex.ru). Ограничение фреймов — через CSP frame-ancestors.
+        # Всегда перезаписываем CSP (не setdefault): иначе после редеплоя
+        # может «залипнуть» старый заголовок из предыдущего слоя ответа.
+        response.headers["Content-Security-Policy"] = _CSP
+        # X-Frame-Options: DENY ломает проверку/Вебвизор Метрики.
+        # Фреймы ограничиваем только CSP frame-ancestors (metrika/webvisor).
+        if "x-frame-options" in response.headers:
+            del response.headers["x-frame-options"]
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "strict-origin-when-cross-origin")
         response.headers.setdefault(

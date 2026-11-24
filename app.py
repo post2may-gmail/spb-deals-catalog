@@ -274,7 +274,8 @@ def create_app() -> FastAPI:
 
     @app.get("/__health")
     async def health() -> dict[str, Any]:
-        return {"ok": True}
+        # Маркер успешного деплоя правок под Яндекс.Метрику (frame-ancestors).
+        return {"ok": True, "metrika_framing": True, "build": "metrika-csp-v3"}
 
     @app.get("/", response_class=HTMLResponse)
     async def home(request: Request) -> HTMLResponse:
