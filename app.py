@@ -257,8 +257,11 @@ def create_app() -> FastAPI:
             "og_image": extra.pop("og_image", abs_url(request, "/favicon.svg")),
             "json_ld": json_ld,
             "json_ld_extra": json_ld_extra,
-            "google_site_verification": os.getenv("GOOGLE_SITE_VERIFICATION", ""),
-            # Код подтверждения Яндекс.Вебмастера для sdelkispb.ru
+            # Коды подтверждения для sdelkispb.ru (Search Console / Вебмастер)
+            "google_site_verification": os.getenv(
+                "GOOGLE_SITE_VERIFICATION",
+                "5NjEm_xoie4FDJ7twznaCQ590-JwmFEStqUFssHQtyg",
+            ),
             "yandex_verification": os.getenv(
                 "YANDEX_VERIFICATION", "c61284db6bb2b623"
             ),
