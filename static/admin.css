@@ -79,6 +79,23 @@
 }
 
 .admin-form .field { margin-bottom: 1rem; }
+.admin-form .field-hint {
+  display: block;
+  margin-top: 0.35rem;
+  color: #5a6b73;
+  font-size: 0.85rem;
+  font-weight: 500;
+  line-height: 1.35;
+}
+.form-error {
+  background: #fdeceb;
+  border: 1px solid #e8a9a3;
+  color: #7a2e28;
+  padding: 0.7rem 0.9rem;
+  border-radius: 10px;
+  margin: 0 0 1rem;
+  font-weight: 600;
+}
 .admin-form textarea,
 .admin-form input[type="text"],
 .admin-form input[type="password"],

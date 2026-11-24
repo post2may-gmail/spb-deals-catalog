@@ -15,7 +15,26 @@ from seo import BRAND, DEFAULT_DESCRIPTION
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 PACKAGED_CMS = DATA_DIR / "cms.db"
-CMS_PATH = Path(os.getenv("CMS_DB_PATH") or (Path(tempfile.gettempdir()) / "spb_cms.db"))
+
+
+def _default_cms_path() -> Path:
+    """Пишем в CMS_DB_PATH, иначе в /data (том Timeweb), иначе /tmp."""
+    env = (os.getenv("CMS_DB_PATH") or "").strip()
+    if env:
+        return Path(env)
+    for candidate in (Path("/data/spb_cms.db"), Path("/var/data/spb_cms.db")):
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            probe = candidate.parent / ".cms_write_probe"
+            probe.write_text("ok", encoding="utf-8")
+            probe.unlink(missing_ok=True)
+            return candidate
+        except OSError:
+            continue
+    return Path(tempfile.gettempdir()) / "spb_cms.db"
+
+
+CMS_PATH = _default_cms_path()
 
 _lock = threading.Lock()
 _ready = False
@@ -252,12 +271,63 @@ def get_page_by_slug(slug: str, *, published_only: bool = True) -> dict[str, Any
         conn.close()
 
 
+_TRANSLIT = {
+    "а": "a",
+    "б": "b",
+    "в": "v",
+    "г": "g",
+    "д": "d",
+    "е": "e",
+    "ё": "e",
+    "ж": "zh",
+    "з": "z",
+    "и": "i",
+    "й": "y",
+    "к": "k",
+    "л": "l",
+    "м": "m",
+    "н": "n",
+    "о": "o",
+    "п": "p",
+    "р": "r",
+    "с": "s",
+    "т": "t",
+    "у": "u",
+    "ф": "f",
+    "х": "h",
+    "ц": "ts",
+    "ч": "ch",
+    "ш": "sh",
+    "щ": "sch",
+    "ъ": "",
+    "ы": "y",
+    "ь": "",
+    "э": "e",
+    "ю": "yu",
+    "я": "ya",
+}
+
+
+def slugify(text: str) -> str:
+    """«О проекте» → «o-proekte»."""
+    out: list[str] = []
+    for ch in (text or "").strip().lower().replace("ё", "е"):
+        if ch in _TRANSLIT:
+            out.append(_TRANSLIT[ch])
+        elif "a" <= ch <= "z" or "0" <= ch <= "9":
+            out.append(ch)
+        elif ch in {" ", "-", "_", ".", "/", "\\"}:
+            out.append("-")
+    slug = re.sub(r"-{2,}", "-", "".join(out)).strip("-")
+    return slug[:80]
+
+
 def validate_slug(slug: str) -> str | None:
     s = (slug or "").strip().lower()
     if not s:
-        return "Укажите адрес страницы (slug)"
+        return "Укажите адрес страницы (латиницей), например about"
     if not _SLUG_RE.match(s):
-        return "Slug: только латиница, цифры и дефис (например about или contacts)"
+        return "Адрес: только латиница, цифры и дефис (например about или o-proekte)"
     reserved = {
         "admin",
         "api",
@@ -287,12 +357,13 @@ def create_page(
     show_in_nav: bool = False,
     sort_order: int = 100,
 ) -> tuple[dict[str, Any] | None, str | None]:
-    err = validate_slug(slug)
-    if err:
-        return None, err
     title = sanitize_plain_text(title, max_len=200)
     if not title:
         return None, "Укажите заголовок"
+    slug = (slug or "").strip().lower() or slugify(title)
+    err = validate_slug(slug)
+    if err:
+        return None, err
     safe_body = sanitize_html(body or "")
     safe_meta = sanitize_plain_text(meta_description or "", max_len=300)
     conn = _db()
@@ -331,12 +402,13 @@ def update_page(
     show_in_nav: bool = False,
     sort_order: int = 100,
 ) -> str | None:
-    err = validate_slug(slug)
-    if err:
-        return err
     title = sanitize_plain_text(title, max_len=200)
     if not title:
         return "Укажите заголовок"
+    slug = (slug or "").strip().lower() or slugify(title)
+    err = validate_slug(slug)
+    if err:
+        return err
     safe_body = sanitize_html(body or "")
     safe_meta = sanitize_plain_text(meta_description or "", max_len=300)
     conn = _db()
@@ -413,7 +485,7 @@ def public_nav_items() -> list[dict[str, str]]:
         if safe:
             items.append(safe)
     for page in list_pages(published_only=True):
-        if page.get("show_in_nav"):
+        if int(page.get("show_in_nav") or 0):
             items.append(
                 {
                     "label": sanitize_plain_text(str(page["title"]), max_len=120),
@@ -421,6 +493,19 @@ def public_nav_items() -> list[dict[str, str]]:
                 }
             )
     return items
+
+
+def cms_storage_info() -> dict[str, Any]:
+    """Для подсказки в админке: где лежит БД и эфемерна ли она."""
+    path = CMS_PATH
+    ephemeral = str(path).startswith("/tmp") or str(path).startswith(
+        tempfile.gettempdir()
+    )
+    return {
+        "path": str(path),
+        "ephemeral": ephemeral,
+        "exists": path.exists(),
+    }
 
 
 def public_footer_links() -> list[dict[str, str]]:

@@ -4,15 +4,16 @@
 <section class="admin-card">
   <h1>{% if page %}{{ form.title or 'Страница' }}{% else %}Новая страница{% endif %}</h1>
   {% if error %}<p class="form-error">{{ error }}</p>{% endif %}
-  <form method="post" action="{% if page %}/admin/pages/{{ page.id }}{% else %}/admin/pages/new{% endif %}" class="admin-form">
+  <form method="post" action="{% if page %}/admin/pages/{{ page.id }}{% else %}/admin/pages/new{% endif %}" class="admin-form" id="page-form">
     {% include "admin/_csrf.html" %}
     <label class="field">
       <span>Заголовок</span>
-      <input type="text" name="title" value="{{ form.title }}" required>
+      <input type="text" name="title" id="page-title" value="{{ form.title }}" required>
     </label>
     <label class="field">
-      <span>Адрес (slug) — страница будет на /p/slug</span>
-      <input type="text" name="slug" value="{{ form.slug }}" required pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="about">
+      <span>Адрес страницы (латиницей)</span>
+      <input type="text" name="slug" id="page-slug" value="{{ form.slug }}" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" placeholder="about" autocomplete="off">
+      <small class="field-hint">Страница откроется как <code>/p/<span id="slug-preview">{{ form.slug or 'about' }}</span></code>. Если пусто — адрес сделается из заголовка (например «О проекте» → <code>o-proekte</code>).</small>
     </label>
     <label class="field">
       <span>Meta description</span>
@@ -37,6 +38,9 @@
     <div class="admin-actions">
       <button class="btn-primary" type="submit">Сохранить</button>
       <a class="btn-secondary" href="/admin/pages">К списку</a>
+      {% if page and form.slug %}
+      <a class="btn-secondary" href="/p/{{ form.slug }}" target="_blank" rel="noopener">Открыть на сайте ↗</a>
+      {% endif %}
     </div>
   </form>
   {% if page %}
@@ -46,4 +50,52 @@
   </form>
   {% endif %}
 </section>
+<script>
+(function () {
+  var title = document.getElementById("page-title");
+  var slug = document.getElementById("page-slug");
+  var preview = document.getElementById("slug-preview");
+  var isNew = {{ "true" if not page else "false" }};
+  var map = {а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"e",ж:"zh",з:"z",и:"i",й:"y",к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",х:"h",ц:"ts",ч:"ch",ш:"sh",щ:"sch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya"};
+  function slugify(text) {
+    var out = "";
+    text = (text || "").toLowerCase().replace(/ё/g, "е");
+    for (var i = 0; i < text.length; i++) {
+      var ch = text[i];
+      if (map[ch] !== undefined) out += map[ch];
+      else if (/[a-z0-9]/.test(ch)) out += ch;
+      else if (/[\s\-_.\/\\]/.test(ch)) out += "-";
+    }
+    return out.replace(/-{2,}/g, "-").replace(/^-|-$/g, "").slice(0, 80);
+  }
+  function syncPreview() {
+    if (preview) preview.textContent = slug.value || "about";
+  }
+  if (title && slug && isNew) {
+    var touched = !!slug.value;
+    slug.addEventListener("input", function () { touched = true; syncPreview(); });
+    title.addEventListener("input", function () {
+      if (!touched) {
+        slug.value = slugify(title.value);
+        syncPreview();
+      }
+    });
+    if (!slug.value && title.value) {
+      slug.value = slugify(title.value);
+    }
+  }
+  slug && slug.addEventListener("input", syncPreview);
+  syncPreview();
+  var form = document.getElementById("page-form");
+  if (form) {
+    form.addEventListener("submit", function () {
+      if (slug && !slug.value && title) {
+        slug.value = slugify(title.value) || "about";
+      }
+      // снимаем pattern-блокировку если сервер сам сделает slug
+      if (slug && !slug.value) slug.removeAttribute("required");
+    });
+  }
+})();
+</script>
 {% endblock %}

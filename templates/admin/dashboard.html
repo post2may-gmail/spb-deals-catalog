@@ -4,6 +4,9 @@
 <section class="admin-card">
   <h1>Управление сайтом</h1>
   <p class="muted">Редактируйте тексты главной, добавляйте страницы и ссылки в меню.</p>
+  {% if cms_storage and cms_storage.ephemeral %}
+  <p class="form-error">База CMS сейчас в эфемерном каталоге (<code>{{ cms_storage.path }}</code>). После редеплоя страницы могут пропасть. В Timeweb задайте том и переменную <code>CMS_DB_PATH=/data/spb_cms.db</code>.</p>
+  {% endif %}
   <div class="admin-grid">
     <a class="admin-tile" href="/admin/texts">
       <strong>Тексты</strong>

@@ -170,6 +170,7 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
                 admin_section="home",
                 pages_count=len(cms.list_pages()),
                 links_count=len(cms.list_nav_links()),
+                cms_storage=cms.cms_storage_info(),
             ),
         )
 
@@ -288,7 +289,10 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
                 ),
                 status_code=400,
             )
-        flash(request, f"Страница «{page['title']}» создана")
+        flash(
+            request,
+            f"Страница «{page['title']}» создана — на сайте: /p/{page['slug']}",
+        )
         return RedirectResponse(f"/admin/pages/{page['id']}", status_code=303)
 
     @router.get("/pages/{page_id}", response_class=HTMLResponse)
@@ -371,7 +375,9 @@ def build_admin_router(templates: Jinja2Templates) -> APIRouter:
                 ),
                 status_code=400,
             )
-        flash(request, "Страница сохранена")
+        updated = cms.get_page(page_id)
+        slug = (updated or {}).get("slug") or slug
+        flash(request, f"Страница сохранена — на сайте: /p/{slug}")
         return RedirectResponse(f"/admin/pages/{page_id}", status_code=303)
 
     @router.post("/pages/{page_id}/delete", response_model=None)
