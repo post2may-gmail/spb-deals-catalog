@@ -17,15 +17,39 @@ DEFAULT_DESCRIPTION = (
 )
 
 
+def _canonicalize_public_origin(raw: str) -> str:
+    """Нормализует origin: без хвостового /, www.sdelkispb.ru → sdelkispb.ru."""
+    from urllib.parse import urlparse, urlunparse
+
+    text = (raw or "").strip().rstrip("/")
+    if not text:
+        return text
+    if "://" not in text:
+        text = "https://" + text
+    parsed = urlparse(text)
+    host = (parsed.hostname or "").lower()
+    # У www нет рабочего SSL — каноникал только apex.
+    if host == "www.sdelkispb.ru":
+        host = "sdelkispb.ru"
+    scheme = parsed.scheme or "https"
+    netloc = host
+    if parsed.port and not (
+        (scheme == "https" and parsed.port == 443)
+        or (scheme == "http" and parsed.port == 80)
+    ):
+        netloc = f"{host}:{parsed.port}"
+    return urlunparse((scheme, netloc, "", "", "", "")).rstrip("/")
+
+
 def public_base_url(request: Request) -> str:
     """Канонический origin только из env или из ASGI base_url — без X-Forwarded-*."""
     for name in ("SITE_BASE_URL", "PUBLIC_BASE_URL"):
         env = (os.getenv(name) or "").strip().rstrip("/")
         if env:
-            return env
+            return _canonicalize_public_origin(env)
     # request.base_url берётся из ASGI scope сервера, не из клиентских
     # X-Forwarded-Host / X-Forwarded-Proto / Host (их не читаем намеренно).
-    return str(request.base_url).rstrip("/")
+    return _canonicalize_public_origin(str(request.base_url))
 
 
 def abs_url(request: Request, path: str = "/") -> str:
