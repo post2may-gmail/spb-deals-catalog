@@ -20,8 +20,9 @@
       <input type="text" name="meta_description" value="{{ form.meta_description }}">
     </label>
     <label class="field">
-      <span>Текст (безопасный HTML: p, h2–h4, ul/ol, a, strong/em)</span>
+      <span>Текст</span>
       <textarea name="body" rows="14">{{ form.body }}</textarea>
+      <small class="field-hint">Обычный текст: Enter — новая строка, пустая строка — новый абзац. Можно HTML: <code>&lt;p&gt;</code>, <code>&lt;h2&gt;</code>–<code>&lt;h4&gt;</code>, списки, ссылки, <code>&lt;strong&gt;</code>/<code>&lt;em&gt;</code>.</small>
     </label>
     <label class="field">
       <span>Порядок сортировки</span>

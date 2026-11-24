@@ -465,6 +465,29 @@ def _force_safe_links(attrs: dict[tuple[str | None, str], str], new: bool = Fals
     return attrs
 
 
+_BLOCK_TAG_RE = re.compile(
+    r"<(?:p|div|br|h[1-6]|ul|ol|li|blockquote|pre|table|hr)\b",
+    re.IGNORECASE,
+)
+
+
+def _plain_newlines_to_html(html: str) -> str:
+    """Если в тексте нет блочных тегов — переносы строк → <p>/<br>."""
+    if not html or _BLOCK_TAG_RE.search(html):
+        return html
+    text = html.replace("\r\n", "\n").replace("\r", "\n").strip()
+    if not text:
+        return ""
+    parts: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        line = block.strip()
+        if not line:
+            continue
+        line = "<br>\n".join(line.split("\n"))
+        parts.append(f"<p>{line}</p>")
+    return "\n".join(parts)
+
+
 def sanitize_html(raw: str) -> str:
     cleaned = bleach.clean(
         raw or "",
@@ -473,6 +496,7 @@ def sanitize_html(raw: str) -> str:
         protocols=_ALLOWED_PROTOCOLS,
         strip=True,
     )
+    cleaned = _plain_newlines_to_html(cleaned)
     return bleach.linkify(
         cleaned,
         callbacks=[_force_safe_links],
