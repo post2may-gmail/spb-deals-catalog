@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import re
 
-# Кадастровые районы СПб: 78:31 Центральный, 78:37 Колпинский.
+# Кадастровые районы СПб: 78:31 Центральный, 78:37 Колпинский, 78:42 Пушкинский (Шушары).
 _TVERSKAYA_KOLPINO_PREFIXES = ("78:37:",)
+_PUSHKINSKAYA_SHUSHARY_PREFIXES = ("78:42:",)
+_PUSHKINSKAYA_KOLPINO_PREFIXES = ("78:37:",)
 # Кварталы площади Аврова vs улицы Аврова (Петергоф, 78:40).
 _AVROVA_SQUARE_QUARTERS = (
     "78:40:0019249",
@@ -25,6 +27,19 @@ _TYPE_SUFFIX = re.compile(
     r"аллея|проезд|дорога)$",
     re.IGNORECASE,
 )
+_PAREN = re.compile(r"\s*\([^)]*\)\s*")
+
+# Слияние вариантов написания / уточнений в скобках → канон каталога.
+_MERGE_BY_CORE: dict[str, str] = {
+    "непокоренных": "Непокоренных",
+    "английский": "Английский",
+    "переведенская": "Переведенская",
+    "пискаревский": "Пискаревский",
+    "полоцкая": "Полоцкая",
+    "политрука пасечника": "Политрука Пасечника",
+    "приозерское": "Приозерское",
+    "пугачева": "Пугачева",
+}
 
 
 def _norm_key(name: str) -> str:
@@ -36,6 +51,12 @@ def _base_without_type(name: str) -> str:
     return _TYPE_SUFFIX.sub("", text).strip() or text
 
 
+def _core_name(name: str) -> str:
+    """Имя без типа улицы и без уточнения в скобках."""
+    text = _PAREN.sub(" ", name or "")
+    return _norm_key(_base_without_type(text))
+
+
 def canonicalize_street(street: str, quarter_cad_number: str = "") -> str:
     """Возвращает каноническое имя улицы для каталога и поиска."""
     name = " ".join((street or "").strip().split())
@@ -44,37 +65,31 @@ def canonicalize_street(street: str, quarter_cad_number: str = "") -> str:
 
     key = _norm_key(name)
     base = _norm_key(_base_without_type(name))
+    core = _core_name(name)
     quarter = (quarter_cad_number or "").strip()
 
-    # Непокоренных / Непокорённых → одна улица.
-    if base == "непокоренных" or key in {
-        "непокоренных",
-        "непокоренных проспект",
-        "непокорённых",
-        "непокорённых проспект",
-    }:
-        return "Непокоренных"
-
-    # Английский проспект: слить «Английский» и «Английский проспект».
-    # «Английская» (дорога) не трогаем.
-    if base == "английский" or key in {"английский", "английский проспект"}:
-        return "Английский"
-
     # Тверская: Центр (78:31) vs Колпино (78:37).
-    if base == "тверская" or key in {"тверская", "тверская улица"}:
+    if core == "тверская":
         if any(quarter.startswith(p) for p in _TVERSKAYA_KOLPINO_PREFIXES):
             return "Тверская (Колпино)"
-        # Уже размеченная Колпино-версия.
         if "колпино" in key:
             return "Тверская (Колпино)"
         return "Тверская"
 
+    # Пушкинская: Центр (78:31) vs Шушары/Пушкинский (78:42) vs Колпино (78:37).
+    if core == "пушкинская":
+        if "шушар" in key or any(
+            quarter.startswith(p) for p in _PUSHKINSKAYA_SHUSHARY_PREFIXES
+        ):
+            return "Пушкинская (Шушары)"
+        if "колпино" in key or any(
+            quarter.startswith(p) for p in _PUSHKINSKAYA_KOLPINO_PREFIXES
+        ):
+            return "Пушкинская (Колпино)"
+        return "Пушкинская"
+
     # Аврова: площадь и улица в Петергофе — разные топонимы.
-    if base in {"аврова", "аврова площадь", "аврова улица"} or key in {
-        "аврова",
-        "аврова площадь",
-        "аврова улица",
-    }:
+    if core == "аврова":
         if "площад" in key:
             return "Аврова площадь"
         if "улиц" in key:
@@ -83,7 +98,22 @@ def canonicalize_street(street: str, quarter_cad_number: str = "") -> str:
             return "Аврова площадь"
         if any(quarter.startswith(q) for q in _AVROVA_STREET_QUARTERS):
             return "Аврова"
-        # Без квартала по умолчанию — улица (длинный линейный топоним).
         return "Аврова"
+
+    # Простые слияния дублей (ё/е, скобки, с типом / без типа).
+    merged = _MERGE_BY_CORE.get(core)
+    if merged:
+        return merged
+
+    # Совместимость со старыми ключами до _core_name.
+    if base == "непокоренных" or key in {
+        "непокоренных",
+        "непокоренных проспект",
+        "непокорённых",
+        "непокорённых проспект",
+    }:
+        return "Непокоренных"
+    if base == "английский" or key in {"английский", "английский проспект"}:
+        return "Английский"
 
     return name
