@@ -45,7 +45,7 @@ _ALLOWED_TAGS = [
 _ALLOWED_ATTRS = {
     "a": ["href", "title", "rel", "target"],
 }
-_ALLOWED_PROTOCOLS = ["http", "https", "mailto"]
+_ALLOWED_PROTOCOLS = ["http", "https", "mailto", "tel"]
 
 _LOGIN_WINDOW_SEC = 900
 _LOGIN_MAX_FAILURES = 8

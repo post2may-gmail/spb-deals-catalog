@@ -116,8 +116,78 @@ _TEXT_MIGRATIONS: dict[str, tuple[str, ...]] = {
     ),
 }
 
+_ABOUT_SEED_VERSION = "2026-11-25"
+_ABOUT_SLUG = "o-proekte"
+_ABOUT_TITLE = "О проекте"
+_ABOUT_META = (
+    "Петербургский агент Виталий Дихтяренко — о каталоге цен сделок "
+    "Росреестра по квартирам в Санкт-Петербурге."
+)
+_ABOUT_BODY = """
+<p>Здравствуйте!</p>
+<p>Я петербургский агент по недвижимости Виталий Дихтяренко.</p>
+<p>И мне, как и многим собственникам, покупателям и агентам, интересно знать, сколько стоит та или иная квартира в Петербурге.</p>
+<p>И мне мало видеть цены в объявлениях и калькуляторы оценки на порталах недвижимости.</p>
+<p>Мне хочется знать, а почём в реальности была продана квартира.</p>
+<p>Эту цену обычно указывают в договоре купли-продажи и отправляют договор на государственную регистрацию в Росреестр.</p>
+<p>И с недавних пор Росреестр выложил в открытый доступ дата-сеты с ценами сделок, но ими неудобно пользоваться.</p>
+<p>Поэтому я с помощью вездесущего искусственного интеллекта обработал эти таблицы, вычленив ту информацию, которая касается жилых помещений, проданных в Петербурге, и опубликовал здесь. Доступна информация о сделках начиная с 1&nbsp;квартала 2024&nbsp;года.</p>
+<p>Да, здесь и цены сделок на квартиры, и на доли. Но у вас теперь есть дополнительный инструмент для оценки и торга, особенно если вы изучаете сделки на тех улицах, которые вы хорошо знаете. Ведь помимо названий улиц у вас будут дополнительные ориентиры, а именно год постройки дома и материал дома.</p>
+<p>Пользу от этого сервиса уже оценили мои клиенты и коллеги, когда я выложил в сентябре телеграм-бот <a href="https://t.me/FlatpricesSpbbot" rel="noopener noreferrer" target="_blank">@FlatpricesSpbbot</a> с ценами на сделки купли-продажи квартир, постаравшись максимально очистить базу от сделок с комнатами.</p>
+<p>В общем, пользуйтесь, дорогие мои.</p>
+<p>И если вам потребуется агент для продажи или покупки квартиры в Петербурге, обращайтесь по тел. <a href="tel:+79531762564">+7&nbsp;953&nbsp;176‑25‑64</a> или в телеграм <a href="https://t.me/vitaliy_real" rel="noopener noreferrer" target="_blank">@vitaliy_real</a>.</p>
+""".strip()
 
-def _seed(conn: sqlite3.Connection) -> None:
+
+def _seed_about_page(conn: sqlite3.Connection) -> bool:
+    """Создаёт/обновляет «О проекте» при смене версии сида. True если меняли."""
+    row = conn.execute(
+        "SELECT value FROM settings WHERE key = ?", ("about_seed_version",)
+    ).fetchone()
+    if row and str(row["value"]) == _ABOUT_SEED_VERSION:
+        return False
+    existing = conn.execute(
+        "SELECT id, slug FROM pages WHERE slug IN (?, ?)",
+        (_ABOUT_SLUG, "about"),
+    ).fetchone()
+    if existing:
+        conn.execute(
+            """
+            UPDATE pages
+            SET slug = ?, title = ?, body = ?, meta_description = ?,
+                is_published = 1, show_in_nav = 1, sort_order = 30,
+                updated_at = datetime('now')
+            WHERE id = ?
+            """,
+            (
+                _ABOUT_SLUG,
+                _ABOUT_TITLE,
+                _ABOUT_BODY,
+                _ABOUT_META,
+                int(existing["id"]),
+            ),
+        )
+    else:
+        conn.execute(
+            """
+            INSERT INTO pages(
+              slug, title, body, meta_description,
+              is_published, show_in_nav, sort_order
+            ) VALUES (?, ?, ?, ?, 1, 1, 30)
+            """,
+            (_ABOUT_SLUG, _ABOUT_TITLE, _ABOUT_BODY, _ABOUT_META),
+        )
+    conn.execute(
+        """
+        INSERT INTO settings(key, value) VALUES (?, ?)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value
+        """,
+        ("about_seed_version", _ABOUT_SEED_VERSION),
+    )
+    return True
+
+
+def _seed(conn: sqlite3.Connection) -> bool:
     for field in TEXT_FIELDS:
         conn.execute(
             "INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)",
@@ -146,7 +216,9 @@ def _seed(conn: sqlite3.Connection) -> None:
             """,
             nav_defaults,
         )
+    about_changed = _seed_about_page(conn)
     conn.commit()
+    return about_changed
 
 
 def _checkpoint() -> Path:
@@ -220,10 +292,16 @@ def ensure_cms() -> Path:
             );
             """
         )
-        _seed(conn)
+        about_changed = _seed(conn)
         conn.close()
         CMS_PATH = target
         _ready = True
+        if about_changed and s3_configured():
+            ok, msg = upload_cms_db(target)
+            if ok:
+                logger.info("CMS about seed synced to S3: %s", msg)
+            else:
+                logger.warning("CMS about seed S3 sync failed: %s", msg)
         return target
 
 
