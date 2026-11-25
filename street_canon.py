@@ -95,6 +95,19 @@ def canonicalize_street(street: str, quarter_cad_number: str = "") -> str:
             return "Пушкинская (Колпино)"
         return "Пушкинская"
 
+    # Заводская: несколько одноимённых улиц в разных районах.
+    # 78:12 Усть-Славянка, 78:36 Парголово, 78:37 Понтонный, 78:38 Песочный.
+    if core == "заводская":
+        if "усть" in key or "слав" in key or quarter.startswith("78:12:"):
+            return "Заводская (Усть-Славянка)"
+        if "песочн" in key or quarter.startswith("78:38:"):
+            return "Заводская (Песочный)"
+        if "парголов" in key or quarter.startswith("78:36:"):
+            return "Заводская (Парголово)"
+        if "понтон" in key or quarter.startswith("78:37:"):
+            return "Заводская (Понтонный)"
+        return "Заводская"
+
     # Аврова: площадь и улица в Петергофе — разные топонимы.
     if core == "аврова":
         if "площад" in key:
