@@ -497,6 +497,83 @@ body {
   color: var(--muted);
 }
 
+.table-note {
+  margin: 0.85rem 0 0.35rem;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.site-credit {
+  margin: 0.35rem 0 0;
+  max-width: 40rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.site-credit a {
+  color: var(--sea-deep, #1f4f4c);
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.site-credit a:hover {
+  text-decoration: underline;
+}
+
+.site-footer .site-credit {
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.about-page .prose {
+  margin-bottom: 1.75rem;
+}
+
+.about-contact {
+  margin-top: 0.5rem;
+  padding: 1.15rem 0 0;
+  border-top: 1px solid color-mix(in srgb, var(--sea, #2a7a74) 28%, transparent);
+  color: var(--ink-soft);
+  font-size: 1.02rem;
+  line-height: 1.55;
+  animation: rise 0.55s ease both;
+  animation-delay: 0.12s;
+}
+
+.about-contact-lead {
+  margin: 0 0 0.45rem;
+  font-family: "Unbounded", sans-serif;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.about-contact p {
+  margin: 0.2rem 0;
+}
+
+.about-phone {
+  color: var(--sea-deep, #1f4f4c);
+  font-weight: 700;
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.about-phone:hover {
+  text-decoration: underline;
+}
+
+.about-sep {
+  margin: 0 0.45rem;
+  color: var(--muted);
+}
+
 @keyframes rise {
   from {
     opacity: 0;

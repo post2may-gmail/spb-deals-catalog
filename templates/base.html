@@ -67,7 +67,7 @@
   {% endif %}
   {% block head %}{% endblock %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <div class="atmosphere" aria-hidden="true"></div>
   <header class="site-header">
     <a class="brand" href="/" title="{{ brand }}">{{ brand }}</a>
@@ -92,6 +92,9 @@
     </nav>
     {% endif %}
     <p class="muted">{{ stats.deals|default(0) }} сделок · {{ stats.streets|default(0) }} улиц{% if texts and texts.footer_note %} · {{ texts.footer_note }}{% endif %}</p>
+    {% block footer_credit %}
+    {% include "_credit.html" %}
+    {% endblock %}
   </footer>
   <script src="/static/app.js" defer></script>
   {% block scripts %}{% endblock %}

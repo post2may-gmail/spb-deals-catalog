@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="page-head prose-page">
+<section class="page-head prose-page about-page">
   <nav class="breadcrumbs" aria-label="Хлебные крошки">
     <a href="/">Главная</a>
     <span aria-hidden="true">/</span>
@@ -10,5 +10,17 @@
   <div class="prose">
     {{ page.body | safe }}
   </div>
+  <aside class="about-contact" aria-label="Контакты">
+    <p class="about-contact-lead">Вопросы по проекту и сделкам</p>
+    <p>
+      Петербургский агент по недвижимости
+      <strong>Виталий Дихтяренко</strong>
+    </p>
+    <p>
+      <a class="about-phone" href="tel:+79531762564">+7&nbsp;953&nbsp;176‑25‑64</a>
+      <span class="about-sep" aria-hidden="true">·</span>
+      <span>пишите в&nbsp;тг</span>
+    </p>
+  </aside>
 </section>
 {% endblock %}
